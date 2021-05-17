@@ -32,3 +32,6 @@ int requestComparison(void*, void *);
 
 //stampa di una richiesta 
 void requestPrint(void*);
+
+//funzione di liberazione di memoria di una singola richiesta
+void freeRequest(void*);

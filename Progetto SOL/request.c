@@ -46,3 +46,9 @@ void requestPrint(void* c){
 	printf("Request send timestamp: %s\n", buff);
 	printf("Type = %d\n\n", d.type);
 }
+
+void freeRequest(void* c){
+	MyRequest *f = (MyRequest*)c;
+
+	free(f);
+}

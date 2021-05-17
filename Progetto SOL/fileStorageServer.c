@@ -167,7 +167,7 @@ static void* managerThreadActivity(void* args){
 							//requestPrint((void*)&toAdd);
 							//printf("FINE stampa richiesta ricevuta\n");
 							if(l == 0){ //EOF sul descrittore di indice index
-								printf("Ho letto %d bytes\n", l);
+								printf("------------------------------------------------------------------\n");
 								clearBuffer(buf, 1024);
 								close(index);
 								FD_CLR(index, &active_fds);
@@ -396,7 +396,7 @@ int executeRemoveFile(MyRequest r){
 int executeAppendFile(MyRequest r){
 	MyFile f1, toRead;
 	int res = 0, l;
-	int buf_size;
+	size_t buf_size;
 	char *buf;
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
 
@@ -419,7 +419,7 @@ int executeAppendFile(MyRequest r){
 		return -1;
 	}
 
-	if((l = readn(r.comm_socket, &buf_size, sizeof(int))) == -1){
+	if((l = readn(r.comm_socket, &buf_size, sizeof(size_t))) == -1){
 		printf("Non buono3\n");
 		return -1;
 	}
@@ -470,11 +470,11 @@ int executeAppendFile(MyRequest r){
 						perror("Errore realloc");
 					}
 				}
-				strncpy(toAppend->content, buf, l);
+				strncpy(toAppend->content, buf, strlen(buf));
 				toAppend->dim += l;
 				toAppend->content[toAppend->dim] = '\0';
 				toAppend->modified = 1;
-				filePrint((void*)toAppend);
+				//filePrint((void*)toAppend);
 			}
 			break;
 		}
@@ -490,6 +490,49 @@ int executeAppendFile(MyRequest r){
 	return 0;
 }
 
+int executeReadNFile(MyRequest r){
+	int N = atoi(r.request_content);
+	int i = 0, l;
+	int finished = 0;
+
+	pthread_mutex_lock(&fileCacheMutex);
+	int numFileExpected = N <= 0 || N > fileCache.size? fileCache.size : N;
+	pthread_mutex_unlock(&fileCacheMutex);
+
+	pthread_mutex_lock(&fileCacheMutex);
+	GenericNode *corr = fileCache.queue.head;
+	pthread_mutex_unlock(&fileCacheMutex);
+
+	finished = !(i < numFileExpected);
+	if((l = writen(r.comm_socket, &finished, sizeof(int))) == -1){
+		return -1;
+	}
+
+	while(i < numFileExpected){
+		MyFile toSend = *(MyFile*)corr->info;
+		printf("Sto mandando un file:\n");
+		filePrint((void*)&toSend);
+		corr = corr->next;
+		if((l = writen(r.comm_socket, &toSend, sizeof(MyFile))) == -1){
+			return -1;
+		}
+
+		if((l = writen(r.comm_socket, toSend.content, toSend.dim)) == -1){
+			return -1;
+		}
+		//printf("Sizeof di file da mandare: %d\n", sizeof(toSend));
+		//printf("Sizeof struttura del file: %d\n", sizeof(MyFile));
+		//printf("Byte della struttura scritti: %d\n", l);
+		i++;
+		finished = !(i < numFileExpected);
+		if((l = writen(r.comm_socket, &finished, sizeof(int))) == -1){
+			return -1;
+		}
+	}
+	
+	return i;
+}
+
 /*
 	Funzione di esecuzione di una singola richiesta
 	che dovrà distinguerne il tipo
@@ -499,11 +542,6 @@ static void executeRequest(MyRequest r){
 		case OPEN_FILE:
 			if(executeOpenFile(r) == -1)
 				perror("Errore esecuzione richiesta OPEN_FILE");
-			else{
-				/*pthread_mutex_lock(&fileCacheMutex);
-				printQueue(fileCache);
-				pthread_mutex_unlock(&fileCacheMutex);*/
-			} 
 			break;
 		case READ_FILE:
 			if(executeReadFile(r) == -1)
@@ -520,13 +558,11 @@ static void executeRequest(MyRequest r){
 		case APPEND_FILE:
 			if(executeAppendFile(r) == -1)
 				perror("Errore esecuzione richiesta APPEND_FILE");
-			else{
-				/*pthread_mutex_lock(&fileCacheMutex);
-				printQueue(fileCache);
-				pthread_mutex_unlock(&fileCacheMutex);*/
-			}
 			break;
-		case READ_N_FILE: break;
+		case READ_N_FILE: 
+			if(executeReadNFile(r) == -1)
+				perror("Errore esecuzione richiesta READ_N_FILE");
+			break;
 		default: return;	
 	}
 }
@@ -538,7 +574,7 @@ void commSocketGiveBack(int comm_socket){
 	while(celleLibere == 0)
 		pthread_cond_wait(&pList, &pipeAccessMutex);
 	celleLibere = 0;
-	if((l = write(p[1], &comm_socket, sizeof(int))) == -1){
+	if((l = writen(p[1], &comm_socket, sizeof(int))) == -1){
 		perror("Errore write!");
 		exit(EXIT_FAILURE);
 	}
@@ -620,9 +656,9 @@ int main(int argc, char const *argv[]){
 		exit(EXIT_FAILURE);
 	}
 	//creo coda di descrittori che rappresentano le connessioni attuali
-	connections = createQueue(&descriptorComparison, &descriptorPrint); 
-	fileCache = createQueue(&fileComparison, &filePrint);  //creo cache di file
-	requests = createQueue(&requestComparison, &requestPrint);
+	connections = createQueue(&descriptorComparison, &descriptorPrint, &freeDescriptor); 
+	fileCache = createQueue(&fileComparison, &filePrint, &freeFile);  //creo cache di file
+	requests = createQueue(&requestComparison, &requestPrint, &freeRequest);
 
 	if(pipe(p) < 0){
 		perror("Errore creazione pipe\n");

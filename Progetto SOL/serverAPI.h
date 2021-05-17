@@ -44,6 +44,8 @@ int openFile(const char*, int);
 */
 int readFile(const char*, void**, size_t*);
 
+int readNFiles(int, const char*);
+
 int writeFile(const char*, const char*);
 
 int appendToFile(const char*, void*, size_t, const char*);

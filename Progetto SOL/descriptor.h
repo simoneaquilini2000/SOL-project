@@ -15,3 +15,6 @@ int descriptorComparison(void*, void *);
 
 //esegue la stampa di un descrittore della coda
 void descriptorPrint(void*);
+
+//funzione per la liberazione in memoria di nodo rappresentante il descrittore
+void freeDescriptor(void*);

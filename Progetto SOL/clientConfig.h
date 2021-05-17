@@ -17,6 +17,11 @@ ClientConfigInfo getConfigInfoFromCmd(int, const char* []);
 //stampa i parametri di configurazione
 void printConfigInfo(ClientConfigInfo);
 
+/*
+	Tokenizza la stringa usando come delimitatore il carattere ','
+	e crea per ognuna di queste una richiesta del tipo passato come primo parametro,
+	inserendola nella coda di richieste
+*/
 int buildInsertRequest(int, char*);
 
 /*
@@ -28,6 +33,10 @@ int buildInsertRequest(int, char*);
 */
 int navigateFileSystem(char *, int, int);
 
+/*
+	Inserisce nella coda una richiesta di tipo READ_N_FILE 
+	con eventuale parametro n nel campo request_content della struttura
+*/
 int buildReadNRequest(int, char*);
 
 //parsa la cmd e costruisce la coda delle richieste da spedire al server

@@ -1,8 +1,8 @@
 CC = gcc
 CFLAGS = -g -o
 SOCKNAME = /tmp/config.txt
-COMMON_DEPS = generic_queue.c utility.c request.c
-SERVER_DEPS = fileStorageServer.c descriptor.c file.c $(COMMON_DEPS)
+COMMON_DEPS = generic_queue.c utility.c request.c file.c
+SERVER_DEPS = fileStorageServer.c descriptor.c $(COMMON_DEPS)
 CLIENT_DEPS = fileStorageClient.c clientConfig.c serverAPI.c $(COMMON_DEPS) 
 
 fileStorageServer: $(SERVER_DEPS)

@@ -40,7 +40,19 @@ static void* leggiDaPipe(void* args){
 
 int main(){
     pthread_t t1, t2;
-    int N = 47;
+    int N = 10;
+    char a[2];
+    int len = 2;
+
+    while(N > 0){
+        a = rialloca(a, len);
+        N--;
+    }
+
+
+
+    /*printf("%d\n", (N>0));
+    printf("%d\n", (N<=0));
 
     if(pipe(p) == -1)
         exit(EXIT_FAILURE);
@@ -49,5 +61,5 @@ int main(){
     pthread_create(&t2, NULL, &leggiDaPipe, NULL);
 
     pthread_join(t1, NULL);
-    pthread_join(t2, NULL);
+    pthread_join(t2, NULL);*/
 }

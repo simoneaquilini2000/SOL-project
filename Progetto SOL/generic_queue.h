@@ -14,6 +14,8 @@ typedef struct a{
 	Queue queue; //struttura che rappresenta la coda
 	int (*comparison) (void*, void*); //funzione di comparazione tra 2 elementi
 	void (*printFunct) (void*); //funzione di stampa delle info di un singolo nodo
+	void (*freeFunct) (void*); //funzione di liberazione della memoria di un singolo nodo
+	int size;
 }GenericQueue; //in quanto generica nella coda va specificata la funzione di comparazione di due elementi
 
 
@@ -23,11 +25,14 @@ int defaultComparison(void*, void*);
 //funzione di default per la stampa di un elmento
 void defaultPrinter(void*);
 
+//funzione di liberazione di memoria di default
+void defaultFreeFunct(void*);
+
 /*
    crea coda generica e se f == NULL usa come funzione di comparazione "defaultComparison",
    mentre se s == NULL usa come funzione di stampa "defaultPrinter"
 */
-GenericQueue createQueue(int (*) (void*, void*), void (*) (void*));
+GenericQueue createQueue(int (*) (void*, void*), void (*) (void*), void (*) (void*));
 
 //crea un nodo generico
 GenericNode* createNode(void *);

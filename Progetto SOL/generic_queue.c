@@ -13,21 +13,33 @@ int defaultComparison(void* a, void* b){
 	return (valA == valB);
 }
 
-GenericQueue createQueue(int (*f) (void*, void*), void (*p) (void*)){
+void defaultFreeFunct(void* c){
+	int *x = (int*)c;
+
+	free(x);
+}
+
+GenericQueue createQueue(int (*comp) (void*, void*), void (*print) (void*), void (*fr) (void*)){
 	GenericQueue q;
 
-	if(f == NULL)
+	if(comp == NULL)
 		q.comparison = defaultComparison;
 	else
-		q.comparison = f;
+		q.comparison = comp;
 
-	if(p == NULL)
+	if(print == NULL)
 		q.printFunct = defaultPrinter;
 	else
-		q.printFunct = p;
+		q.printFunct = print;
+
+	if(fr == NULL)
+		q.freeFunct = defaultFreeFunct;
+	else
+		q.freeFunct = fr;
 
 	q.queue.head = NULL;
 	q.queue.tail = NULL;
+	q.size = 0;
 
 	return q;
 }
@@ -54,6 +66,7 @@ int push(GenericQueue *q, void *ptr){
 		q->queue.tail->next = toAdd;
 		q->queue.tail = toAdd;
 	}
+	q->size++;
 	return 1;
 }
 
@@ -75,7 +88,7 @@ void* pop(GenericQueue *q){
 	}
 
 	free(result);
-
+	q->size--;
 	/*if(ris == NULL)
 		printf("BAB\n");
 	else
@@ -98,16 +111,18 @@ void deleteElement(GenericQueue *q, void *ptr){
 	while(corr != NULL){
 		if(q->comparison(corr->info, ptr) == 1){
 			if(prec == NULL){
-				if((toDel = pop(q)) != NULL){
-					corr = q->queue.head;
-					free(toDel);
-				}
+				toDel = corr;
+				corr = corr->next;
+				q->freeFunct(toDel->info);
+				free(toDel);
 			}else{
 				toDel = corr;
 				corr = corr->next;
 				prec->next = corr;
+				q->freeFunct(toDel->info);
 				free(toDel);
 			}
+			q->size--;
 		}else{
 			prec = corr;
 			corr = corr->next;
@@ -119,11 +134,6 @@ int findElement(GenericQueue q, void *toFind){
 	GenericNode *corr = q.queue.head;
 
 	while(corr != NULL){
-		//printf("Sto confrontando\n");
-		//q.printFunct(toFind);
-		//printf("CON\n");
-		//q.printFunct(corr->info);
-		//printf("FINE CONFRONTO\n");
 		if(q.comparison(corr->info, toFind) == 1)
 			return 1;
 		corr = corr->next;
@@ -160,7 +170,11 @@ void freeQueue(GenericQueue *q){
 	while(corr != NULL){
 		toDel = corr;
 		corr = corr->next;
-		free(toDel->info);
+		q->freeFunct(toDel->info);
 		free(toDel);
-	} 
+		q->size--;
+	}
+
+	if(q->freeFunct != NULL)
+		free(q->freeFunct); 
 }

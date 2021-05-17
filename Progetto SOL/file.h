@@ -19,3 +19,9 @@ int fileComparison(void*, void *);
 //funzione per la stampa di un file
 void filePrint(void*);
 
+//funzione di liberazione di memoria di un singolo file
+void freeFile (void*);
+
+//funzione che esegue il salvataggio di un file in una directory
+int saveFile(MyFile, const char[]);
+

@@ -9,6 +9,7 @@
 #include<math.h>
 #include "serverAPI.h"
 #include "request.h"
+#include "file.h"
 #include "clientConfig.h"
 #include "utility.h"
 
@@ -47,7 +48,7 @@ int openConnection(const char* sockName, int msec, const struct timespec abstime
    		if(connect(comm_socket_descriptor, (struct sockaddr*)&sa, sizeof(sa)) != -1)
    			connected = 1;
    		else{
-   			//printf("%d\n", errno);
+   			printf("%d\n", errno);
    			if(errno == ENOENT || errno == ECONNREFUSED){
    				msleep(msec);
    				max_nsec -= (msec * pow(10, 6));
@@ -95,7 +96,7 @@ int closeConnection(const char* sockName){
 			return -1;
 		}
 	}while(errno == EINTR);
-	unlink(c.socketName);
+	//unlink(c.socketName);
 	return 0;
 }
 
@@ -152,11 +153,13 @@ int readFile(const char* pathname, void** buf, size_t* size){
 	r.request_dim = strlen(r.request_content);
 
 	if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){
+		printf("1\n");
 		errno = EAGAIN;
 		return -1;
 	}
 
 	if((l = readn(comm_socket_descriptor, &ris, sizeof(int))) == -1){
+		printf("2\n");
 		errno = EAGAIN;
 		return -1;
 	}
@@ -176,6 +179,7 @@ int readFile(const char* pathname, void** buf, size_t* size){
 	}
 
 	if((l = readn(comm_socket_descriptor, &buf_size, sizeof(int))) == -1){
+		printf("3\n");
 		errno = EAGAIN;
 		return -1;
 	}
@@ -187,13 +191,65 @@ int readFile(const char* pathname, void** buf, size_t* size){
 	}
 
 	if((l = readn(comm_socket_descriptor, *buf, *size)) == -1){
+		printf("4\n");
 		errno = EAGAIN;
 		return -1;
 	}
 	return 0;
 }
 
+int readNFiles(int N, const char* dirname){
+	MyRequest r;
+	MyFile toSave;
+	int l, finished, counter = 0;
 
+	memset(&r, 0, sizeof(MyRequest));
+	r.flags = 0;
+	r.timestamp = time(NULL);
+	r.type = READ_N_FILE;
+	sprintf(r.request_content, "%d", N);
+	r.request_dim = strlen(r.request_content);
+
+	if((l = writen(comm_socket_descriptor, &r, sizeof(MyRequest))) == -1){
+		errno = EAGAIN;
+		return -1;
+	}
+
+	if((l = readn(comm_socket_descriptor, &finished, sizeof(int))) == -1){
+		errno = EAGAIN;
+		return -1;
+	}
+
+	while(finished != 1){
+		memset(&toSave, 0, sizeof(toSave));
+		if((l = readn(comm_socket_descriptor, &toSave, sizeof(toSave))) == -1){
+			errno = EAGAIN;
+			return -1;
+		}
+
+		toSave.content = malloc(toSave.dim * sizeof(char));
+
+		if((l = readn(comm_socket_descriptor, toSave.content, toSave.dim)) == -1){
+			errno = EAGAIN;
+			return -1;
+		}
+
+		if(strcmp(dirname, "") != 0){
+			if((l = saveFile(toSave, dirname)) == -1){
+				perror("Errore salvataggio file!\n");
+				errno = EIO; //errore I/O nel salvataggio su disco del file
+				return -1;
+			}
+		}
+		counter++;
+
+		if((l = readn(comm_socket_descriptor, &finished, sizeof(int))) == -1){
+			errno = EAGAIN;
+			return -1;
+		}
+	}
+	return counter;
+}
 
 int writeFile(const char* pathname, const char* dirname){
 	char buf[1024];
@@ -226,7 +282,7 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
 		return -1;
 	}
 
-	printf("Ho ricevuto dal server = %d\n", ris);
+	//printf("Ho ricevuto dal server = %d\n", ris);
 
 	if(ris == -1){
 		errno = ENOENT; //file da scrivere in append non presente nel server

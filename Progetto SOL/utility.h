@@ -26,8 +26,7 @@ void myStrNCpy(char *, char *, int);
 void clearBuffer(char[], int);
 
 /* Read "n" bytes from a descriptor */
-ssize_t  
-readn(int, void *, size_t);
+int readn(long fd, void *buf, size_t size);
 
 /* Write "n" bytes to a descriptor */
-ssize_t writen(int, void *, size_t);
+int writen(long fd, void *buf, size_t size); 

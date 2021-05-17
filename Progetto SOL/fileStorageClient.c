@@ -10,7 +10,7 @@
 #include<sys/un.h>
 #include<sys/types.h>
 #include "request.h"
-//#include "file.h"
+#include "file.h"
 #include "clientConfig.h"
 #include "generic_queue.h"
 #include "serverAPI.h"
@@ -27,7 +27,7 @@ int main(int argc, char const *argv[]){
 	ts.tv_sec = 10; //10 secondi 
 	ts.tv_nsec = 0; // 0 nanosecondi
 
-	toSendRequestQueue = createQueue(&requestComparison, &requestPrint);
+	toSendRequestQueue = createQueue(&requestComparison, &requestPrint, &freeRequest);
 
 	//se c'è -h stampo lo usage message e termino l'esecuzione
 	while((o = getopt(argc, argv, ALL_OPTIONS)) != -1){
@@ -84,26 +84,57 @@ int main(int argc, char const *argv[]){
 
 	//printf("BA\n");
 	char buffer[40];
+	int ris;
+
+	char *recBuf;
+	size_t recBufSize;
 
 	memset(buffer, 0, sizeof(buffer));
 
-	strcpy(buffer, "Oggi e' bellissimo aiuto mamma mia!");
-	y = appendToFile("/tmp/albero.txt", buffer,	strlen(buffer), c.saveReadFileDir);
+	//strcpy(buffer, "Oggi e' bellissimo aiuto mamma mia!");
+	//y = appendToFile("/tmp/albero.txt", buffer,	strlen(buffer), c.saveReadFileDir);
 	//printf("BU\n");
 
 	//y = removeFile("/tmp/albero.txt");
 
-	printf("%d %d\n", y, errno);
+	//printf("%d %d\n", y, errno);
 
-	int ris = openFile("/tmp/albero2.txt", O_CREAT);
+	ris = openFile("/tmp/albero2.txt", O_CREAT);
 	printf("%d %d\n", ris, errno);
 
-	//sleep(2);
+	sleep(1);
 
-	//z = openFile("/tmp/albero1.txt", O_CREAT);
-	//printf("%d %d\n", z, errno);
+	ris = openFile("/tmp/albero3.txt", O_CREAT);
+	printf("%d %d\n", ris, errno);
+
+	sleep(1);
+
+	ris = openFile("/tmp/albero4.txt", O_CREAT);
+	printf("%d %d\n", ris, errno);
+
+	//ris = readNFiles(2, c.saveReadFileDir);
+	//printf("%d %d\n", ris, errno);
 
 	sleep(2);
+
+	strncpy(buffer, "Oggi e' brutto aiuto mamma mia!", strlen("Oggi e' brutto aiuto mamma mia!"));
+	y = appendToFile("/tmp/albero.txt", buffer,	strlen(buffer), c.saveReadFileDir);
+	//printf("BU\n");
+	printf("%d %d\n", y, errno);
+
+	z = readFile("/tmp/albero.txt", (void**) &recBuf, &recBufSize);
+	printf("%d %d\n", z, errno);
+	if(z == 0)
+		printf("Ho ricevuto il buffer %s che ha size %d\n", recBuf, recBufSize);
+
+	/*z = openFile("/tmp/albero10.txt", O_CREAT);
+	printf("%d %d\n", z, errno);*/
+
+	sleep(2);
+
+	z = readNFiles(2, c.saveReadFileDir);
+
+	sleep(1);
 
 	int x = closeConnection(c.socketName);
 	printf("Esito terminazione connesione: %d\n", x);

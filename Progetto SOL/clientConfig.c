@@ -269,11 +269,6 @@ void getToSendRequestsFromCmd(int argc, const char* argv[]){
 
 	optind = 1;
 	while((o = getopt(argc, argv, ALL_OPTIONS)) != -1){
-		/*printf("Ho letto %c\n", o);
-		if(optarg != NULL)
-			printf("Ed optarg = %s\n", optarg);
-		else
-			printf("Argomento non specificato\n");*/
 		switch(o){
 			case 'w': buildMultipleWriteRequest(WRITE_FILE, optarg);
 					  break;

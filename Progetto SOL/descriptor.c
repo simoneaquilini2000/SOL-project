@@ -1,4 +1,5 @@
 #include<stdio.h>
+#include<stdlib.h>
 #include "descriptor.h"
 
 int descriptorComparison(void* f1, void *f2){
@@ -12,4 +13,10 @@ void descriptorPrint(void* c){
 	MyDescriptor d = *(MyDescriptor*)c;
 
 	printf("%d -> ", d.cfd);
+}
+
+void freeDescriptor(void* c){
+	MyDescriptor *f = (MyDescriptor*)c;
+
+	free(f);
 }

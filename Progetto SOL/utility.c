@@ -2,6 +2,7 @@
 #include<stdlib.h>
 #include<unistd.h>
 #include<string.h>
+#include<errno.h>
 #include "utility.h"
 
 void clearBuffer(char in[], int len){
@@ -69,42 +70,34 @@ serverInfo startConfig(const char* sockPath){
 	return s;
 }
 
-ssize_t readn(int fd, void *ptr, size_t n) {  
-   size_t   nleft;
-   ssize_t  nread;
- 
-   nleft = n;
-   while (nleft > 0) {
-		//printf("Mi manca da leggere = %d\n", nleft);
-     if((nread = read(fd, ptr, nleft)) < 0) {
-        if (nleft == n) return -1; /* error, return -1 */
-        else break; /* error, return amount read so far */
-     } else if (nread == 0) {//printf("OK3\n"); 
-	 break;} /* EOF */
-     nleft -= nread;
-	 //printf("Ho letto %d\n", nread);
-	 //printf("Primo carattere = %d\n", (int) ((char*)ptr)[0]);
-	 //for(int j = 0; j < nread; j++)
-	 	//printf("%c\n", *((char*)ptr + j));
-     ptr   += nread;
-   }
-   //printf("OK4\n");
-   return (n - nleft); /* return >= 0 */
+int readn(long fd, void *buf, size_t size) {
+    size_t left = size;
+    int r;
+    char *bufptr = (char*)buf;
+    while(left>0) {
+	if ((r=read((int)fd ,bufptr,left)) == -1) {
+	    if (errno == EINTR) continue;
+	    return -1;
+	}
+	if (r == 0) return 0;   // EOF
+        left    -= r;
+	bufptr  += r;
+    }
+    return size;
 }
 
-ssize_t writen(int fd, void *ptr, size_t n) {  
-   size_t   nleft;
-   ssize_t  nwritten;
- 
-   nleft = n;
-   while (nleft > 0) {
-	   //printf("Devo scrivere %s\n", (char*)ptr);
-     if((nwritten = write(fd, ptr, nleft)) < 0) {
-        if (nleft == n) return -1; /* error, return -1 */
-        else break; /* error, return amount written so far */
-     } else if (nwritten == 0) break; 
-     nleft -= nwritten;
-     ptr   += nwritten;
-   }
-   return(n - nleft); /* return >= 0 */
+int writen(long fd, void *buf, size_t size) {
+    size_t left = size;
+    int r;
+    char *bufptr = (char*)buf;
+    while(left>0) {
+	if ((r=write((int)fd ,bufptr,left)) == -1) {
+	    if (errno == EINTR) continue;
+	    return -1;
+	}
+	if (r == 0) return 0;  
+        left    -= r;
+	bufptr  += r;
+    }
+    return 1;
 }
