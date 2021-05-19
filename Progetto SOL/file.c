@@ -8,7 +8,7 @@
 #include<errno.h>
 #include "utility.h"
 #include "generic_queue.h"
-#include "request.h"
+//#include "request.h"
 #include "file.h"
 
 int fileComparison(void* f1, void *f2){
@@ -38,7 +38,11 @@ void filePrint(void* info){
 	printf("Timestamp: %s\n", buff);
 	printf("Locked: %d\n", f.isLocked);
 	printf("Open: %d\n", f.isOpen);
-	printf("Modified: %d\n\n", f.modified);
+	printf("Modified: %d\n", f.modified);
+	printf("Last successful operation:\n");
+	printf("\tOperation type: %d\n", f.lastSucceedOp.opType);
+	printf("\tOptional flags: %d\n", f.lastSucceedOp.optFlags);
+	printf("\tServer to Client descriptor: %d\n\n", f.lastSucceedOp.clientDescriptor);
 }
 
 void freeFile(void* s){
@@ -77,27 +81,22 @@ int saveFile(MyFile f, const char dirname[]){
 		return -1;
 	}
 
-	/*
-		TO DO: decidere cosa fare in caso di
-		scrittura di un file già esistente
-	*/
-
 	char *fileName = getFileNameFromPath(f.filePath);
-	int toWrite = open(fileName, O_WRONLY | O_CREAT, 0700);
+	FILE *toWrite = fopen(fileName, "w");
 
-	if(toWrite == -1){
+	if(toWrite == NULL){
 		perror("Errore open!\n");
 		chdir(previousCwd);
 		return -1;
 	}
 
-	if((l = writen(toWrite, f.content, f.dim)) == -1){
+	if((l = fwrite(f.content, sizeof(char), f.dim, toWrite)) == -1){
 		perror("Errore write!\n");
 		chdir(previousCwd);
 		return -1;
 	}
 
-	if(close(toWrite) == -1){
+	if(fclose(toWrite) != 0){
 		perror("Errore close!\n");
 		chdir(previousCwd);
 		return -1;
@@ -107,4 +106,46 @@ int saveFile(MyFile f, const char dirname[]){
 		return -1;
 	}
 	return 1;
+}
+
+char* readFileContent(const char *pathname, char **fileContent){
+	if(pathname == NULL)
+		return NULL;
+
+	char absPath[PATH_MAX];
+	char recBuf[1024];
+	char *ris = realpath(pathname, absPath);
+
+	//printf("Leggo file: %s\n", absPath);
+
+	if(ris == NULL) //ris == NULL significa che pathname non è stato trovato
+		return NULL;
+
+	*fileContent = malloc(1);
+	int act_dim = 1, precDim;
+	int charToAdd;
+
+	FILE *toRead = fopen(absPath, "rb");
+
+	while((charToAdd = fread(recBuf, sizeof(char), 1024, toRead)) > 0){
+		//printf("Ho letto %d caratteri\n", charToAdd);
+		precDim = strlen(*fileContent) + 1;
+		while(precDim + charToAdd >= act_dim){
+			//printf("Rialloco\n");
+			*fileContent = realloc(*fileContent, sizeof(char) * (2 * act_dim));
+			if(*fileContent == NULL){
+				fclose(toRead);
+				return NULL;
+			}
+			act_dim *= 2;
+		}
+		strncat(*fileContent, recBuf, charToAdd);
+		fileContent[strlen(*fileContent)] = '\0';
+	}
+
+	fclose(toRead);
+
+	//printf("Contenuto: %s\n", fileContent);
+
+	return *fileContent;
 }

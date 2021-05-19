@@ -45,96 +45,40 @@ int main(int argc, char const *argv[]){
 	getToSendRequestsFromCmd(argc, argv);
 	//printQueue(toSendRequestQueue);
 
-	/*char b[1024], backup[1024];
-
-	strcpy(b, "/home/simone/programmazione/Sistemi_Operativi/Esercizi lezione 5/myFind.c");
-
-	strcpy(backup, b);
-
-	char* str = getFileNameFromPath(b);
-	char* absPath = findFile("/home", str);
-	if(absPath != NULL){
-		printf("Ho trovato file %s ed il suo path è %s\n", str, absPath);
-	}else
-		printf("Non ho trovato %s\n", str);
-	*/
-	//return 0;
-
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
 	//toSendRequestQueue = getToSendRequestsFromCmd(argc, argv);
 
 	//printf("Connesso al server = %d\n errno = %d\n", a, errno);
 
-	z = openFile("/tmp/albero.txt", O_CREAT);
+	z = openFile("fileDaLeggere1.txt", O_CREAT);
 	printf("%d %d\n", z, errno);
-	/*z = openFile("/tmp/albero2.txt", O_CREAT);
-	printf("%d %d\n", z, errno);
-	z = openFile("/tmp/albero3.txt", O_CREAT);
-	printf("%d %d\n", z, errno);
-	z = openFile("/tmp/albero4.txt", O_CREAT);
-	printf("%d %d\n", z, errno);
-	z = openFile("/tmp/albero5.txt", O_CREAT);
 
+	z = openFile("fileDaLeggere2.txt", O_CREAT);
+	printf("%d %d\n", z, errno);
+
+	z = openFile("fileDaLeggere3.txt", O_CREAT);
+	printf("%d %d\n", z, errno);
+
+	z = openFile("fileDaLeggere4.txt", O_CREAT);
+	printf("%d %d\n", z, errno);
+
+	z = openFile("fileDaLeggere5.txt", O_CREAT);
+	printf("%d %d\n", z, errno);
+
+	z = openFile("fileDaLeggere.txt", O_CREAT);
+	printf("%d %d\n", z, errno);
+
+	z = writeFile("fileDaLeggere.txt", NULL);
+	printf("%d %d\n", z, errno);
+
+	z = writeFile("fileDaLeggere2.txt", NULL);
+	printf("%d %d\n", z, errno);
+
+	z = writeFile("fileDaLeggere3.txt", NULL);
+	printf("%d %d\n", z, errno);
+
+	/*z = writeFile("fileDaLeggere.txt", NULL);
 	printf("%d %d\n", z, errno);*/
-
-	sleep(2);
-	//t= closeFile("/tmp/albero.txt");
-
-	//printf("Chiudo file= %d %d\n", t, errno);
-
-	//printf("BA\n");
-	char buffer[40];
-	int ris;
-
-	char *recBuf;
-	size_t recBufSize;
-
-	memset(buffer, 0, sizeof(buffer));
-
-	//strcpy(buffer, "Oggi e' bellissimo aiuto mamma mia!");
-	//y = appendToFile("/tmp/albero.txt", buffer,	strlen(buffer), c.saveReadFileDir);
-	//printf("BU\n");
-
-	//y = removeFile("/tmp/albero.txt");
-
-	//printf("%d %d\n", y, errno);
-
-	ris = openFile("/tmp/albero2.txt", O_CREAT);
-	printf("%d %d\n", ris, errno);
-
-	sleep(1);
-
-	ris = openFile("/tmp/albero3.txt", O_CREAT);
-	printf("%d %d\n", ris, errno);
-
-	sleep(1);
-
-	ris = openFile("/tmp/albero4.txt", O_CREAT);
-	printf("%d %d\n", ris, errno);
-
-	//ris = readNFiles(2, c.saveReadFileDir);
-	//printf("%d %d\n", ris, errno);
-
-	sleep(2);
-
-	strncpy(buffer, "Oggi e' brutto aiuto mamma mia!", strlen("Oggi e' brutto aiuto mamma mia!"));
-	y = appendToFile("/tmp/albero.txt", buffer,	strlen(buffer), c.saveReadFileDir);
-	//printf("BU\n");
-	printf("%d %d\n", y, errno);
-
-	z = readFile("/tmp/albero.txt", (void**) &recBuf, &recBufSize);
-	printf("%d %d\n", z, errno);
-	if(z == 0)
-		printf("Ho ricevuto il buffer %s che ha size %d\n", recBuf, recBufSize);
-
-	/*z = openFile("/tmp/albero10.txt", O_CREAT);
-	printf("%d %d\n", z, errno);*/
-
-	sleep(2);
-
-	z = readNFiles(2, c.saveReadFileDir);
-
-	sleep(1);
 
 	int x = closeConnection(c.socketName);
 	printf("Esito terminazione connesione: %d\n", x);

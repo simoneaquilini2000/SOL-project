@@ -4,6 +4,8 @@
 #include<sys/types.h>
 #include<sys/socket.h>
 #include<sys/un.h>
+#include<limits.h>
+#include<fcntl.h>
 #include<errno.h>
 #include<time.h>
 #include<math.h>
@@ -48,7 +50,7 @@ int openConnection(const char* sockName, int msec, const struct timespec abstime
    		if(connect(comm_socket_descriptor, (struct sockaddr*)&sa, sizeof(sa)) != -1)
    			connected = 1;
    		else{
-   			printf("%d\n", errno);
+   			printf("Errore in connesione di codice: %d\n", errno);
    			if(errno == ENOENT || errno == ECONNREFUSED){
    				msleep(msec);
    				max_nsec -= (msec * pow(10, 6));
@@ -59,6 +61,7 @@ int openConnection(const char* sockName, int msec, const struct timespec abstime
    		}
    	}
    	if(connected){
+		errno = 0;
    		printf("Sono connesso al server\n");
    		return 0;
    	}
@@ -96,18 +99,31 @@ int closeConnection(const char* sockName){
 			return -1;
 		}
 	}while(errno == EINTR);
+	errno = 0;
 	//unlink(c.socketName);
 	return 0;
 }
 
 int openFile(const char* pathname, int flags){
+	if(flags != O_CREAT && flags != 0){
+		perror("Invalid flags: it can be just O_CREAT(if the file doesn't exist in the cache it will be created) or 0(no flags)\n");
+		errno = EINVAL;
+		return -1;
+	}
 	MyRequest r;
 	int ris, l;
+	char buf[PATH_MAX];
 
 	memset(&r, 0, sizeof(r));
 	//r.comm_socket = comm_socket_descriptor;
 	r.flags = flags;
 	r.type = OPEN_FILE;
+	/*char *res = realpath(pathname, buf);
+	if(res == NULL){
+		perror("File to open not found!\n");
+		errno = EINVAL;
+		return -1;
+	}*/
 	//r.request_content = malloc(sizeof(char) * (strlen(pathname) + 1));
 	strncpy(r.request_content, pathname, strlen(pathname));
 	r.request_content[strlen(pathname)] = '\0';
@@ -126,15 +142,19 @@ int openFile(const char* pathname, int flags){
 
 	switch(ris){
 		case -1:
-			errno = EEXIST; //file già esistente(flag O_CREATE specificato)
+			errno = EEXIST; //file già esistente(flag O_CREAT specificato)
 			return -1;
-			break;
+			//break;
 		case -2:
-			errno = ENOENT; //file inesistente (flag O_CREATE non specificato)
+			//printf("Setto errno = ENOENT\n");
+			errno = ENOENT; //file inesistente (flag O_CREAT non specificato)
 			return -1;
-			break;
+		case -3:
+			errno = EPERM; //non posso aprire un file già aperto
+			return -1;
 		default: break;
 	}
+	errno = 0;
 	return 0;
 }
 
@@ -153,13 +173,13 @@ int readFile(const char* pathname, void** buf, size_t* size){
 	r.request_dim = strlen(r.request_content);
 
 	if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){
-		printf("1\n");
+		//printf("1\n");
 		errno = EAGAIN;
 		return -1;
 	}
 
 	if((l = readn(comm_socket_descriptor, &ris, sizeof(int))) == -1){
-		printf("2\n");
+		//printf("2\n");
 		errno = EAGAIN;
 		return -1;
 	}
@@ -179,7 +199,7 @@ int readFile(const char* pathname, void** buf, size_t* size){
 	}
 
 	if((l = readn(comm_socket_descriptor, &buf_size, sizeof(int))) == -1){
-		printf("3\n");
+		//printf("3\n");
 		errno = EAGAIN;
 		return -1;
 	}
@@ -191,10 +211,11 @@ int readFile(const char* pathname, void** buf, size_t* size){
 	}
 
 	if((l = readn(comm_socket_descriptor, *buf, *size)) == -1){
-		printf("4\n");
+		//printf("4\n");
 		errno = EAGAIN;
 		return -1;
 	}
+	errno = 0;
 	return 0;
 }
 
@@ -234,13 +255,15 @@ int readNFiles(int N, const char* dirname){
 			return -1;
 		}
 
-		if(strcmp(dirname, "") != 0){
+		if(dirname != NULL && strcmp(dirname, "") != 0){
 			if((l = saveFile(toSave, dirname)) == -1){
 				perror("Errore salvataggio file!\n");
 				errno = EIO; //errore I/O nel salvataggio su disco del file
 				return -1;
 			}
 		}
+
+		free(toSave.content);
 		counter++;
 
 		if((l = readn(comm_socket_descriptor, &finished, sizeof(int))) == -1){
@@ -248,14 +271,73 @@ int readNFiles(int N, const char* dirname){
 			return -1;
 		}
 	}
+	errno = 0;
 	return counter;
 }
 
 int writeFile(const char* pathname, const char* dirname){
-	char buf[1024];
+	printf("Scrivo file: %s\n", pathname);
 
-	//findFile(pathname, buf);
-	return 1;
+	char *fileContent;
+	int fileContentDim, l, result;
+	char absPath[PATH_MAX];
+	//funzione per cercare file che ritorna *char nel quale ho il contenuto del file
+	char *ris = readFileContent(pathname, &fileContent);
+	MyRequest r;
+
+	if(ris == NULL){
+		errno = ENOENT;
+		return -1;
+	}
+	//setup richiesta
+	fileContentDim = strlen(fileContent);
+	printf("Lunghezza contenuto del file da scrivere = %d\n", fileContentDim);
+	//realpath(pathname, absPath); //sicuro che absPath non è vuoto in quanto ris != NULL
+	r.type = WRITE_FILE;
+	r.timestamp = time(NULL);
+	r.flags = 0;
+	strncpy(r.request_content, pathname, strlen(pathname));
+	r.request_dim = strlen(pathname);
+
+	//scrittura richiesta(ricevuta dal manager)
+	if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){
+		errno = EAGAIN;
+		return -1;
+	}
+
+
+	//scrittura buf_size
+	if((l = writen(comm_socket_descriptor, &fileContentDim, sizeof(int))) == -1){
+		errno = EAGAIN;
+		return -1;
+	}
+
+	//scrittura buf
+	if((l = writen(comm_socket_descriptor, fileContent, fileContentDim)) == -1){
+		errno = EAGAIN;
+		return -1;
+	}
+
+	//attesa risultato
+	if((l = readn(comm_socket_descriptor, &result, sizeof(int))) == -1){
+		errno = EAGAIN;
+		return -1;
+	}
+
+	switch(result){
+		case -1:
+			errno = ENOENT; //file da scrivere non presente nel server 
+			return -1;
+		case -2: 
+			errno = EACCES; //file da scrivere non aperto
+			return -1;
+		case -3: 
+			errno = EPERM; //operazione non permessa
+			return -1;
+		default: break;
+	}
+	errno = 0;
+	return 0;
 }
 
 int appendToFile(const char* pathname, void* buf, size_t size, const char* dirname){
@@ -294,29 +376,30 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
 		return -1;
 	}
 
-	printf("Buf da mandare = %s\n", (char*) buf);
+	//printf("Buf da mandare = %s\n", (char*) buf);
 
 	if((l = writen(comm_socket_descriptor, buf, size)) == -1){
 		errno = EAGAIN;
 		return -1;
 	}
 
-	printf("Esito scrittura = %d\n", l);
+	//printf("Esito scrittura = %d\n", l);
 
-	printf("Leggo risultato dal server\n");
+	//printf("Leggo risultato dal server\n");
 
 	if((l = readn(comm_socket_descriptor, &ris, sizeof(int))) == -1){
 		errno = EAGAIN;
 		return -1;
 	}
 
-	printf("Adesso ris = %d\n", ris);
+	//printf("Adesso ris = %d\n", ris);
 
 	if(ris == -2){
 		errno = EACCES; //file da scrivere in append non è stato ancora aperto
 		return -1;
 	}
-	printf("SUCCESS\n");
+	errno = 0;
+	//printf("SUCCESS\n");
 	return 0;
 }
 
@@ -351,6 +434,7 @@ int closeFile(const char* pathname){
 			return -1; 
 		default: break; 
 	}
+	errno = 0;
 	return 0;
 }
 
@@ -385,5 +469,6 @@ int removeFile(const char* pathname){
 			return -1;  
 		default: break; 
 	}
+	errno = 0;
 	return 0;
 }

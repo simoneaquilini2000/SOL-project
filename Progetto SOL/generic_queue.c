@@ -101,8 +101,10 @@ void* pop(GenericQueue *q){
 }
 
 void deleteElement(GenericQueue *q, void *ptr){
-	if(q->queue.head == NULL)
+	if(q->queue.head == NULL){
+		printf("Coda vuota\n");
 		return;
+	}
 
 	GenericNode *corr = q->queue.head;
 	GenericNode *prec = NULL;
@@ -110,12 +112,15 @@ void deleteElement(GenericQueue *q, void *ptr){
 
 	while(corr != NULL){
 		if(q->comparison(corr->info, ptr) == 1){
+			printf("Sto eliminando un descrittore di connessione\n");
 			if(prec == NULL){
+				printf("Elimino in testa\n");
 				toDel = corr;
 				corr = corr->next;
 				q->freeFunct(toDel->info);
 				free(toDel);
 			}else{
+				printf("Elimino in mezzo\n");
 				toDel = corr;
 				corr = corr->next;
 				prec->next = corr;
@@ -124,6 +129,7 @@ void deleteElement(GenericQueue *q, void *ptr){
 			}
 			q->size--;
 		}else{
+			printf("Scorro\n");
 			prec = corr;
 			corr = corr->next;
 		}
@@ -159,10 +165,10 @@ void printQueue(GenericQueue q){
 }
 
 void freeQueue(GenericQueue *q){
-	if(q->comparison != NULL)
+	/*if(q->comparison != NULL)
 		free(q->comparison);
 	if(q->printFunct != NULL)
-		free(q->printFunct);
+		free(q->printFunct);*/
 
 	GenericNode* corr = q->queue.head;
 	GenericNode* toDel;
@@ -172,9 +178,11 @@ void freeQueue(GenericQueue *q){
 		corr = corr->next;
 		q->freeFunct(toDel->info);
 		free(toDel);
+		//printf("Sto liberando\n");
 		q->size--;
 	}
 
-	if(q->freeFunct != NULL)
-		free(q->freeFunct); 
+	/*if(q->freeFunct != NULL)
+		free(q->freeFunct);*/
+	//printf("FINE\n"); 
 }

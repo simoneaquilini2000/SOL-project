@@ -14,8 +14,11 @@
 #include "file.h"
 #include "request.h"
 #include "descriptor.h"
+#include "serverInfo.h"
 
 int lfd; //listen socket file descriptor
+
+static pthread_mutex_t lSocketMutex = PTHREAD_MUTEX_INITIALIZER;
 
 //flag che dice se è arrivato sigHup
 int sigHupFlag = 0;
@@ -24,16 +27,22 @@ int sigHupFlag = 0;
 pthread_mutex_t flagAccess = PTHREAD_MUTEX_INITIALIZER;
 
 //struttura che memorizza parametri di config del server
-static serverInfo s; 
+static serverInfo s;
 
-//rappresenta il file di log 
-static FILE *logFile; //da non implementare per giugno
+//struttura contenente informazioni statistiche riguardo la fileCache aggiornata
+static serverStats serverStatistics;
+
+//mutex di accesso in ME per aggiornamento delle statistiche del server
+static pthread_mutex_t updateStatsMutex = PTHREAD_MUTEX_INITIALIZER;
 
 //singola coda che rappresenta la cache(ogni singolo elemento è un MyFile)
 static GenericQueue fileCache;
 
 //Coda dove ogni elemento è una coppia <client_pid, descrittore> che rappresenta i client connessi
 static GenericQueue connections;
+
+//mutex per accedere in ME alla coda delle connessioni
+static pthread_mutex_t connectionsQueueMutex = PTHREAD_MUTEX_INITIALIZER;
 
 //Coda concorrente di comunicazione dalla quale i workers prenderanno le richieste da esaudire
 static GenericQueue requests;
@@ -63,8 +72,51 @@ static pthread_mutex_t pipeAccessMutex = PTHREAD_MUTEX_INITIALIZER;
 //lista di attesa dei workers che devono "restituire" il descrittore usato per la comunicazione al manager
 static pthread_cond_t pList = PTHREAD_COND_INITIALIZER;
 
-//lista di attesa di nuovi dati per il manager
-static pthread_cond_t cList = PTHREAD_COND_INITIALIZER;
+
+static void* signalHandlerActivity(void* args){
+	int sig_num;
+	sigset_t set;
+
+	sigemptyset(&set);
+	sigaddset(&set, SIGHUP);
+	sigaddset(&set, SIGQUIT);
+	sigaddset(&set, SIGINT);
+	pthread_sigmask(SIG_SETMASK, &set, NULL);
+	sigwait(&set, &sig_num);
+
+	pthread_mutex_lock(&lSocketMutex);
+	close(lfd);
+	pthread_mutex_unlock(&lSocketMutex);
+	//printf("Ho ricevuto segnale %d\n", sig_num);
+	if(sig_num == SIGHUP){
+
+	}else{
+		pthread_mutex_lock(&pipeAccessMutex);
+		close(p[0]);
+		close(p[1]);
+		pthread_mutex_unlock(&pipeAccessMutex);
+		printf("Ho ricevuto SIGINT o SIGQUIT quindi esco1\n");
+		pthread_mutex_lock(&requestsQueueMutex);
+		freeQueue(&requests);
+		pthread_mutex_unlock(&requestsQueueMutex);
+		printf("Ho ricevuto SIGINT o SIGQUIT quindi esco2\n");
+		//stampa statistiche in ME
+		pthread_mutex_lock(&updateStatsMutex);
+		printServerStats(serverStatistics);
+		pthread_mutex_unlock(&updateStatsMutex);
+		pthread_mutex_lock(&fileCacheMutex);
+		printf("Stampo file rimasti nella cache:\n");
+		printQueue(fileCache);
+		freeQueue(&fileCache);
+		pthread_mutex_unlock(&fileCacheMutex);
+		printf("Ho ricevuto SIGINT o SIGQUIT quindi esco3\n");
+		//pthread_mutex_lock(&connectionsQueueMutex);
+		//freeQueue(&connections);
+		//pthread_mutex_unlock(&connectionsQueueMutex);
+		printf("Ho ricevuto SIGINT o SIGQUIT quindi esco4\n");
+		exit(EXIT_SUCCESS);
+	}
+}
 
 /*
 	Aggiorno il set dei descrittori attivi in vista della prossima chiamata di select
@@ -101,6 +153,7 @@ static void* managerThreadActivity(void* args){
 	memset(&socket_address, 0, sizeof(socket_address));
 	socket_address.sun_family = AF_UNIX;
 	strncpy(socket_address.sun_path, s.socketPath, sizeof(socket_address.sun_path) - 1);
+	pthread_mutex_lock(&lSocketMutex);
 	lfd = socket(AF_UNIX, SOCK_STREAM, 0);
 	unlink(socket_address.sun_path);
 	if(bind(lfd, (struct sockaddr*) &socket_address, sizeof(socket_address)) == -1){
@@ -112,6 +165,7 @@ static void* managerThreadActivity(void* args){
 	FD_ZERO(&active_fds); //init del set dei descrittori attivi
 	FD_SET(lfd, &active_fds);
 	if(lfd > fd_num) fd_num = lfd; //fd_num terrà il massimo indice di descrittore
+	pthread_mutex_unlock(&lSocketMutex);
 
 	pthread_mutex_lock(&pipeAccessMutex);
 	FD_SET(p[0], &active_fds);
@@ -133,7 +187,11 @@ static void* managerThreadActivity(void* args){
 						newConn->cfd = accept(lfd, NULL, 0);
 						FD_SET(newConn->cfd, &active_fds);
 						if(newConn->cfd > fd_num) fd_num = newConn->cfd;
-						if(push(&connections, (void *) newConn) == -1){ //inserisco nuova connessione
+						pthread_mutex_lock(&connectionsQueueMutex);
+						int pushRes = push(&connections, (void *) newConn);
+						pthread_mutex_unlock(&connectionsQueueMutex);
+						if(pushRes == -1){ //inserisco nuova connessione
+							free(newConn);
 							perror("Errore inserimento nella coda di connessioni!");
 							exit(EXIT_FAILURE);
 						}
@@ -146,7 +204,7 @@ static void* managerThreadActivity(void* args){
 								perror("Errore read da pipe!");
 								exit(EXIT_FAILURE);
 							}
-							printf("Manager: Ho letto %d dalla pipe(%d bytes)\n", descToAdd, l);
+							//printf("Manager: Ho letto %d dalla pipe(%d bytes)\n", descToAdd, l);
 							celleLibere = 1;
 							FD_SET(descToAdd, &active_fds);
 							if(descToAdd > fd_num) 
@@ -167,12 +225,20 @@ static void* managerThreadActivity(void* args){
 							//requestPrint((void*)&toAdd);
 							//printf("FINE stampa richiesta ricevuta\n");
 							if(l == 0){ //EOF sul descrittore di indice index
-								printf("------------------------------------------------------------------\n");
+								
 								clearBuffer(buf, 1024);
 								close(index);
 								FD_CLR(index, &active_fds);
 								fd_num = updateActiveFds(active_fds, fd_num);
-								pop(&connections);
+								pthread_mutex_lock(&connectionsQueueMutex);
+								printf("Prima di terminare connessione:\n");
+								printQueue(connections);
+								MyDescriptor d;
+								d.cfd = index;
+								deleteElement(&connections, (void*) &d);
+								printf("Dopo termine connessione:\n");
+								//printQueue(connections);
+								pthread_mutex_unlock(&connectionsQueueMutex);
 							}else{ //Inserisco in ME una nuova richiesta da soddisfare e la segnalo
 								/*MyRequest badCase;
 								memset(&badCase, 0, sizeof(MyRequest));
@@ -216,6 +282,59 @@ static void* managerThreadActivity(void* args){
 	}
 }
 
+int replacingAlgorithm(){
+	pthread_mutex_lock(&fileCacheMutex);
+	int actQueueSize = fileCache.size;
+	pthread_mutex_unlock(&fileCacheMutex);
+	pthread_mutex_lock(&updateStatsMutex);
+	int replaceCondition = (serverStatistics.fileCacheActStorageSize > s.maxStorageSpace || actQueueSize > s.nMaxFile);
+	pthread_mutex_unlock(&updateStatsMutex);
+
+	//verifico condizioni: se non ci sono le condizioni del rimpiazzo ritorno 1
+	if(replaceCondition == 0){
+		return 1;
+	}
+	//aumentare numero di volte in cui questo è stato invocato
+	pthread_mutex_lock(&updateStatsMutex);
+	serverStatistics.replaceAlgInvokeTimes++;
+	pthread_mutex_unlock(&updateStatsMutex);
+
+	printf("Invoco algoritmo di rimpiazzamento\n");
+
+	/*
+		finchè head != NULL && (size > maxSize || storageSize > maxStorageSize):
+			- pop di file
+			- decremento size e storageSize
+			- freeFile
+	*/
+	pthread_mutex_lock(&fileCacheMutex);
+	int isFcEmpty = isEmpty(fileCache);
+	pthread_mutex_unlock(&fileCacheMutex);
+
+	while(isFcEmpty == 0 && replaceCondition == 1){
+		pthread_mutex_lock(&fileCacheMutex);
+		MyFile *toDel = (MyFile*) pop(&fileCache);
+		isFcEmpty = isEmpty(fileCache);
+		actQueueSize = fileCache.size;
+		pthread_mutex_unlock(&fileCacheMutex);
+		pthread_mutex_lock(&updateStatsMutex);
+		serverStatistics.fileCacheActStorageSize -= toDel->dim;
+		replaceCondition = (serverStatistics.fileCacheActStorageSize > s.maxStorageSpace || actQueueSize > s.nMaxFile);
+		pthread_mutex_unlock(&updateStatsMutex);
+		freeFile((void*) toDel);
+	}
+
+	//aggiorno eventuali max size o max storage size
+	pthread_mutex_lock(&updateStatsMutex);
+	if(actQueueSize > serverStatistics.fileCacheMaxSize)
+		serverStatistics.fileCacheMaxSize = actQueueSize;
+	if(serverStatistics.fileCacheActStorageSize > serverStatistics.fileCacheMaxStorageSize)
+		 serverStatistics.fileCacheMaxStorageSize = serverStatistics.fileCacheActStorageSize;
+	pthread_mutex_unlock(&updateStatsMutex);
+
+	return 0;
+}
+
 int executeOpenFile(MyRequest r){
 	pthread_mutex_lock(&fileCacheMutex);
 	int risFind = findElement(fileCache, r.request_content);
@@ -234,6 +353,10 @@ int executeOpenFile(MyRequest r){
 		if(r.flags == O_CREAT && risFind < 0){
 			MyFile f;
 			
+			/*
+				TO DO: controllo fileCache->size < maxNFile(se non è vero, devo eseguire algoritmo di rimpiazzamento)
+				aggiornamento invokeRepAlgTimes ed eventuale aggiornamento di fileCacheMaxSize(num. elementi) con fileCache->size
+			*/
 			f.isOpen = 1;
 			f.timestamp = time(NULL);
 			f.isLocked = 0;
@@ -245,15 +368,29 @@ int executeOpenFile(MyRequest r){
 			//printf("Nuovo filepath = %s\n", f.filePath);
 			//printf("sono qui2\n");
 			f.content = malloc(25 * sizeof(char)); //dimensione base
-			clearBuffer(f.content, sizeof(f.content));
+			clearBuffer(f.content, 25);
 			f.dim = 0;
+			f.lastSucceedOp.opType = r.type;
+			f.lastSucceedOp.optFlags = r.flags;
+			f.lastSucceedOp.clientDescriptor = r.comm_socket;
 			//filePrint((void*)&f);
 			MyFile *p = malloc(sizeof(MyFile));
 			memcpy(p, &f, sizeof(MyFile));
 			pthread_mutex_lock(&fileCacheMutex);
 			push(&fileCache, (void*)p);
+			//filePrint((void*) p);
 			pthread_mutex_unlock(&fileCacheMutex);
 			//crea un file, mettilo in coda con il flag di open = 1
+			if(replacingAlgorithm() == 1){ //dopo inserimento in coda ristabilisco integrità del sistema
+				//non ho rimosso files quindi aggiorno eventualmente maxSize della cache
+				pthread_mutex_lock(&fileCacheMutex);
+				int actQueueSize = fileCache.size;
+				pthread_mutex_unlock(&fileCacheMutex);
+				pthread_mutex_lock(&updateStatsMutex);
+				if(actQueueSize > serverStatistics.fileCacheMaxSize)
+					serverStatistics.fileCacheMaxSize = actQueueSize;
+				pthread_mutex_unlock(&updateStatsMutex);
+			} 
 		}else if(r.flags != O_CREAT && risFind > 0){
 			pthread_mutex_lock(&fileCacheMutex);
 			GenericNode *corr = fileCache.queue.head;
@@ -263,7 +400,14 @@ int executeOpenFile(MyRequest r){
 			while(corr != NULL){
 				if(fileCache.comparison(corr->info, (void*)&f1) == 1){
 					MyFile *toOpen = (MyFile*)(corr->info);
-					toOpen->isOpen = 1;
+					if(toOpen->isOpen == 0){
+						toOpen->isOpen = 1;
+						toOpen->lastSucceedOp.opType = r.type;
+						toOpen->lastSucceedOp.optFlags = r.flags;
+						toOpen->lastSucceedOp.clientDescriptor = r.comm_socket;
+						//filePrint((void*)toOpen);
+					}else
+						result = -3;
 					break;
 				}
 				corr = corr->next;
@@ -296,20 +440,23 @@ int executeReadFile(MyRequest r){
 
 	pthread_mutex_lock(&fileCacheMutex);
 	GenericNode *corr = fileCache.queue.head;
-	MyFile f1, toRead;
+	MyFile f1, *toRead;
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
 
 	while(corr != NULL){
 		if(fileCache.comparison(corr->info, (void*)&f1) == 1){
-			toRead = *(MyFile*)(corr->info);
-			if(toRead.isOpen == 0){
+			toRead = (MyFile*)(corr->info);
+			if(toRead->isOpen == 0){
 				res = -1;
 				break;
 			}
-			b = malloc(toRead.dim + 1);
-			strncpy(b, toRead.content, toRead.dim);
-			b[toRead.dim] = '\0';
+			b = malloc(toRead->dim + 1);
+			strncpy(b, toRead->content, toRead->dim);
+			b[toRead->dim] = '\0';
 			res = 0;
+			toRead->lastSucceedOp.opType = r.type;
+			toRead->lastSucceedOp.optFlags = r.flags;
+			toRead->lastSucceedOp.clientDescriptor = r.comm_socket;
 			break;
 		}
 		corr = corr->next;
@@ -334,7 +481,7 @@ int executeCloseFile(MyRequest r){
 	pthread_mutex_lock(&fileCacheMutex);
 	GenericNode *corr = fileCache.queue.head;
 	pthread_mutex_unlock(&fileCacheMutex);
-	MyFile f1, toRead;
+	MyFile f1, *toRead;
 	int res = -1, l;
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
 
@@ -342,12 +489,16 @@ int executeCloseFile(MyRequest r){
 		pthread_mutex_lock(&fileCacheMutex);
 		if(fileCache.comparison(corr->info, (void*)&f1) == 1){
 			pthread_mutex_unlock(&fileCacheMutex);
-			toRead = *(MyFile*)(corr->info);
-			if(toRead.isOpen == 0){
+			toRead = (MyFile*)(corr->info);
+			if(toRead->isOpen == 0){
 				res = -2;
 			}else{
-				toRead.isOpen = 0;
+				toRead->isOpen = 0;
 				res  = 0;
+				toRead->modified = 0; // la chiusura del file implica il "salvataggio" delle modifiche e l'azzeramento del flag apposito
+				toRead->lastSucceedOp.opType = r.type;
+				toRead->lastSucceedOp.optFlags = r.flags;
+				toRead->lastSucceedOp.clientDescriptor = r.comm_socket;
 			}
 			break;
 		}
@@ -365,7 +516,7 @@ int executeRemoveFile(MyRequest r){
 	pthread_mutex_lock(&fileCacheMutex);
 	GenericNode *corr = fileCache.queue.head;
 	pthread_mutex_unlock(&fileCacheMutex);
-	MyFile f1, toDel;
+	MyFile f1, *toDel;
 	int res = -1, l;
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
 
@@ -373,13 +524,17 @@ int executeRemoveFile(MyRequest r){
 		pthread_mutex_lock(&fileCacheMutex);
 		if(fileCache.comparison(corr->info, (void*)&f1) == 1){
 			pthread_mutex_unlock(&fileCacheMutex);
-			toDel = *(MyFile*)(corr->info);
-			if(toDel.isLocked == 0){
+			toDel = (MyFile*)(corr->info);
+			if(toDel->isLocked == 0){
 				res = -2;
 			}else{
 				res  = 0;
+				//TO DO: aggiornamento size totale del file storage(sia num.elementi che di somma delle size) -> FATTO
+				pthread_mutex_lock(&updateStatsMutex);
+				serverStatistics.fileCacheActStorageSize -= toDel->dim; //aggiornamento storageSize
+				pthread_mutex_unlock(&updateStatsMutex);
 				pthread_mutex_lock(&fileCacheMutex);
-				deleteElement(&fileCache, (void*) &f1);
+				deleteElement(&fileCache, (void*) &f1); //implicito il decremento della cardinalità della coda
 				pthread_mutex_unlock(&fileCacheMutex);
 			}
 			break;
@@ -408,22 +563,22 @@ int executeAppendFile(MyRequest r){
 	if(isPresent < 0){
 		res = -1;
 		if((l = writen(r.comm_socket, &res, sizeof(int))) == -1){
-			printf("Non buono1\n");
+			//printf("Non buono1\n");
 			return -1;
 		}
 		return 0;
 	}
 
 	if((l = writen(r.comm_socket, &res, sizeof(int))) == -1){
-		printf("Non buono2\n");
+		//printf("Non buono2\n");
 		return -1;
 	}
 
 	if((l = readn(r.comm_socket, &buf_size, sizeof(size_t))) == -1){
-		printf("Non buono3\n");
+		//printf("Non buono3\n");
 		return -1;
 	}
-	printf("Ho ricevuto buf_size = %d\n", buf_size);
+	//printf("Ho ricevuto buf_size = %d\n", buf_size);
 
 	buf = malloc((buf_size + 1) * sizeof(char));
 	if(buf == NULL)
@@ -435,17 +590,17 @@ int executeAppendFile(MyRequest r){
 	//printf("%d\n", r.comm_socket);
 	//clearBuffer(buf, sizeof(buf));
 	
-	printf("Ho ripulito il buffer\n");
+	//printf("Ho ripulito il buffer\n");
 	if((l = readn(r.comm_socket, buf, buf_size * sizeof(char))) == -1){
-		printf("Non buono4\n");
+		//printf("Non buono4\n");
 		return -1;
 	}
-	printf("N caratteri letti = %d\n", l);
+	//printf("N caratteri letti = %d\n", l);
 	buf[l] = '\0';
 
 	//printf("Ciao belli %.*s\n", l, buf);
-	printf("Ho ricevuto buf = %s\n", buf);
-	printf("Lunghezza buffer = %d\n", strlen(buf));
+	//printf("Ho ricevuto buf = %s\n", buf);
+	//printf("Lunghezza buffer = %d\n", strlen(buf));
 
 	pthread_mutex_lock(&fileCacheMutex);
 	GenericNode* corr = fileCache.queue.head;
@@ -460,7 +615,10 @@ int executeAppendFile(MyRequest r){
 				res = -2;
 			}else{
 				res = 0;
-				//printf("Sono qui\n");
+				/*
+					TO DO: controllo su size totale < maxStorageSize(se falso, eseguo algoritmo di rimpiazzamento)
+					ed aggiornamento su maxStorageSize
+				*/
 				int act_dim = strlen(toAppend->content) + 1;
 				while(toAppend->dim + l >= act_dim){
 					//printf("BAB\n");
@@ -474,6 +632,20 @@ int executeAppendFile(MyRequest r){
 				toAppend->dim += l;
 				toAppend->content[toAppend->dim] = '\0';
 				toAppend->modified = 1;
+				toAppend->timestamp = time(NULL);
+				toAppend->lastSucceedOp.opType = r.type;
+				toAppend->lastSucceedOp.optFlags = r.flags;
+				toAppend->lastSucceedOp.clientDescriptor = r.comm_socket;
+				pthread_mutex_lock(&updateStatsMutex);
+				serverStatistics.fileCacheActStorageSize += strlen(buf);
+				pthread_mutex_unlock(&updateStatsMutex);
+				if(replacingAlgorithm() == 1){
+					//non ho rimosso files, procedo con aggiornamento maxStorageSize
+					pthread_mutex_lock(&updateStatsMutex);
+					if(serverStatistics.fileCacheActStorageSize > serverStatistics.fileCacheMaxStorageSize)
+						serverStatistics.fileCacheMaxStorageSize = serverStatistics.fileCacheActStorageSize; 
+					pthread_mutex_unlock(&updateStatsMutex);
+				}
 				//filePrint((void*)toAppend);
 			}
 			break;
@@ -483,7 +655,7 @@ int executeAppendFile(MyRequest r){
 	}	
 
 	if((l = writen(r.comm_socket, &res, sizeof(int))) == -1){
-		printf("Fine richiesta APPEND_FILE con INsuccesso\n");
+		//printf("Fine richiesta APPEND_FILE con INsuccesso\n");
 		return -1;
 	}
 	printf("Fine richiesta APPEND_FILE con successo\n");
@@ -509,17 +681,21 @@ int executeReadNFile(MyRequest r){
 	}
 
 	while(i < numFileExpected){
-		MyFile toSend = *(MyFile*)corr->info;
-		printf("Sto mandando un file:\n");
-		filePrint((void*)&toSend);
+		MyFile *toSend = (MyFile*)corr->info;
+		//printf("Sto mandando un file:\n");
+		//filePrint((void*)&toSend);
 		corr = corr->next;
-		if((l = writen(r.comm_socket, &toSend, sizeof(MyFile))) == -1){
+		if((l = writen(r.comm_socket, toSend, sizeof(*toSend))) == -1){
+			return -1;
+		}
+		
+		if((l = writen(r.comm_socket, toSend->content, toSend->dim)) == -1){
 			return -1;
 		}
 
-		if((l = writen(r.comm_socket, toSend.content, toSend.dim)) == -1){
-			return -1;
-		}
+		toSend->lastSucceedOp.opType = r.type;
+		toSend->lastSucceedOp.optFlags = r.flags;
+		toSend->lastSucceedOp.clientDescriptor = r.comm_socket;
 		//printf("Sizeof di file da mandare: %d\n", sizeof(toSend));
 		//printf("Sizeof struttura del file: %d\n", sizeof(MyFile));
 		//printf("Byte della struttura scritti: %d\n", l);
@@ -531,6 +707,84 @@ int executeReadNFile(MyRequest r){
 	}
 	
 	return i;
+}
+
+int executeWriteFile(MyRequest r){
+	int buf_size, l, found = 0, result;
+	char *buf;
+	MyFile toFind;
+	memset(&toFind, 0, sizeof(MyFile));
+
+	strncpy(toFind.filePath, r.request_content, strlen(r.request_content));
+
+	//printf("Stampo file da cercare in cache:\n");
+	//filePrint((void*)&toFind);
+
+	if((l = readn(r.comm_socket, &buf_size, sizeof(int))) == -1)
+		return -1;
+
+	buf = malloc(buf_size + 1);
+	if(buf == NULL)
+		return -1;
+
+	if((l = readn(r.comm_socket, buf, buf_size)) == -1)
+		return -1;
+
+	//printf("Ho ricevuto buf= %s\n", buf);
+	buf[l] = '\0';
+
+	pthread_mutex_lock(&fileCacheMutex);
+	GenericNode *corr = fileCache.queue.head;
+	pthread_mutex_unlock(&fileCacheMutex);
+
+	while(corr != NULL){
+		pthread_mutex_lock(&fileCacheMutex);
+		if(fileCache.comparison(corr->info, (void*) &toFind) == 1){
+			MyFile *toWrite = (MyFile*) corr->info;
+			pthread_mutex_unlock(&fileCacheMutex);
+			found = 1;
+			if(toWrite->isOpen == 0){
+				result = -2;
+			}else if(toWrite->lastSucceedOp.opType == OPEN_FILE && \
+						toWrite->lastSucceedOp.optFlags == O_CREAT && \
+							toWrite->lastSucceedOp.clientDescriptor == r.comm_socket){
+							result = 0;
+							/*
+								TO DO: controllo scrittura se scrivendo vado oltre la maxStorageSize(se sì, eseguo l'algoritmo di rimpiazzamento)
+								ed aggiornamento actStorageSize ed eventuale massimo di questa
+							*/
+							toWrite->content = malloc(buf_size + 1);
+							strncpy(toWrite->content, buf, buf_size);
+							toWrite->dim = strlen(toWrite->content);
+							toWrite->content[toWrite->dim] = '\0';
+							toWrite->modified = 1;
+							toWrite->timestamp = time(NULL);
+							toWrite->lastSucceedOp.opType = r.type;
+							toWrite->lastSucceedOp.optFlags = r.flags;
+							toWrite->lastSucceedOp.clientDescriptor = r.comm_socket;
+							pthread_mutex_lock(&updateStatsMutex);
+							serverStatistics.fileCacheActStorageSize += buf_size;
+							pthread_mutex_unlock(&updateStatsMutex);
+							if(replacingAlgorithm() == 1){
+								//non ho rimosso files, procedo con aggiornamento maxStorageSize
+								pthread_mutex_lock(&updateStatsMutex);
+								if(serverStatistics.fileCacheActStorageSize > serverStatistics.fileCacheMaxStorageSize)
+									serverStatistics.fileCacheMaxStorageSize = serverStatistics.fileCacheActStorageSize; 
+								pthread_mutex_unlock(&updateStatsMutex);
+							}
+			}else{
+				result = -3;
+			}
+			break;
+		}
+		pthread_mutex_unlock(&fileCacheMutex);
+		corr = corr->next;
+	}
+	if(found == 0) 
+		result = -1;
+	if((l = writen(r.comm_socket, &result, sizeof(int))) == -1)
+		return -1;
+	return 0;
 }
 
 /*
@@ -563,6 +817,10 @@ static void executeRequest(MyRequest r){
 			if(executeReadNFile(r) == -1)
 				perror("Errore esecuzione richiesta READ_N_FILE");
 			break;
+		case WRITE_FILE:
+			if(executeWriteFile(r) == -1)
+				perror("Errore esecuzione richiesta WRITE_FILE");
+			break;
 		default: return;	
 	}
 }
@@ -578,7 +836,7 @@ void commSocketGiveBack(int comm_socket){
 		perror("Errore write!");
 		exit(EXIT_FAILURE);
 	}
-	printf("Worker: Ho scritto %d nella pipe(%d bytes)\n", comm_socket, l);
+	//printf("Worker: Ho scritto %d nella pipe(%d bytes)\n", comm_socket, l);
 	//pthread_cond_signal(&cList);
 	pthread_mutex_unlock(&pipeAccessMutex);
 }
@@ -619,8 +877,8 @@ static void* workerThreadActivity(void* args){
 		if(p == NULL || p == 0)
 			printf("Coda vuota, attendi\n");
 		else{
-			printf("Worker: stampo richiesta estratta dalla coda\n");
-			requestPrint((void*) p);
+			//printf("Worker: stampo richiesta estratta dalla coda\n");
+			//requestPrint((void*) p);
 			executeRequest(*p);
 			commSocketGiveBack(p->comm_socket);
 		}
@@ -641,15 +899,22 @@ static void* workerThreadActivity(void* args){
 
 int main(int argc, char const *argv[]){
 	int i;
+	sigset_t mask;
 	pthread_t manage_tid;
 	pthread_t *workers;
+	pthread_t s_handler;
 
 	if(argc < 2){
-		perror("Path del socket deve essere passato da linea di comando!");
+		perror("Path del file di configurazione deve essere passato da linea di comando!");
 		exit(EXIT_FAILURE);
 	}
 
 	s = startConfig(argv[1]); //parsing del file di config
+	printConfig(s);
+	serverStatistics.fileCacheMaxSize = 0; //s'intende la quantità massima di file memorizzati
+	serverStatistics.fileCacheMaxStorageSize = 0;
+	serverStatistics.replaceAlgInvokeTimes = 0;
+	serverStatistics.fileCacheActStorageSize = 0; //s'intende la somma delle dimensioni dei file nel file storage attuale
 	workers = malloc(s.nWorkers * sizeof(pthread_t)); //alloco i TID per i worker threads
 	if(workers == NULL){
 		perror("Errore malloc!");
@@ -662,6 +927,15 @@ int main(int argc, char const *argv[]){
 
 	if(pipe(p) < 0){
 		perror("Errore creazione pipe\n");
+		exit(EXIT_FAILURE);
+	}
+
+	
+	sigfillset(&mask);
+	pthread_sigmask(SIG_SETMASK, &mask, NULL);
+
+	if(pthread_create(&s_handler, NULL, &signalHandlerActivity, NULL) == -1){ 
+		perror("Errore creazione thread signal handler!");
 		exit(EXIT_FAILURE);
 	}
 
@@ -679,9 +953,9 @@ int main(int argc, char const *argv[]){
 		}
 	}
 
-	//sleep(5);
-	//printf("Sto per inviare segnale");
-	//kill(getpid(), SIGHUP);
+	//sleep(15);
+	//printf("Sto per inviare segnale\n");
+	//kill(getpid(), SIGINT);
 	//join di tutti i threads
 	for(i = 0; i < s.nWorkers; i++)
 			pthread_join(workers[i], NULL);

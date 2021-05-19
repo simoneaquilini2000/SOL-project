@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include<limits.h>
 #include<unistd.h>
 #include<pthread.h>
 
@@ -41,13 +42,12 @@ static void* leggiDaPipe(void* args){
 int main(){
     pthread_t t1, t2;
     int N = 10;
-    char a[2];
+    char a[2], buf[PATH_MAX];
     int len = 2;
 
-    while(N > 0){
-        a = rialloca(a, len);
-        N--;
-    }
+    printf("%d\n", (N < 3));
+    printf("%d\n", (N > 3));
+    return 0;
 
 
 

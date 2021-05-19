@@ -1,23 +1,7 @@
 /*
-	Header di utilità, quali parametri di configurazione
-	e/o funzioni per la formattazione del testo
+	Header di utilità, quali funzioni per la formattazione del testo
+	e/o di lettura/scrittura
 */
-
-#define N_INFO 5 //numero di righe da parsare dal file di testo
-
-typedef struct s{
-	size_t maxStorageSpace; //massimo spazio di configurazione
-	int nMaxFile; //massimo numero di file memorizzabili
-	int nWorkers; //numero di thread workers
-	char socketPath[1024]; //path del socket
-	char logFilePath[1024]; //path del file di log
-}serverInfo;
-
-/*
-	Parsa il file di configurazione e restituisce
-	una struttura contenente tutte le info parsate
-*/
-serverInfo startConfig(const char*);
 
 //utility per eliminare caratteri '\r' e '\n' da una stringa
 void myStrNCpy(char *, char *, int);

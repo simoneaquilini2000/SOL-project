@@ -47,6 +47,9 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, const char* argv[]){
 	int foundT = 0;
 	int foundF = 0;
 	int foundD = 0;
+	int foundr = 0;
+	int foundR = 0;
+
 
 	conf.printEnable = 0;
 	optind = 1;
@@ -83,6 +86,10 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, const char* argv[]){
 					  strcpy(conf.saveReadFileDir, optarg);
 					  //myStrNCpy(conf.saveReadFileDir, optarg, strlen(optarg));
 					  break;
+			case 'R': foundR = 1;
+					  break;
+			case 'r': foundr = 1;
+					  break;
 			case '?': perror("Invalid option(s)");
 					  exit(EXIT_FAILURE);
 					  break;
@@ -94,8 +101,14 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, const char* argv[]){
 		conf.requestInterval = 0;
 	if(foundD == 0)
 		clearBuffer(conf.saveReadFileDir, 1024);
+	else{
+		if(foundR == 0 && foundr == 0){
+			perror("Option -d must be used with option -r or -R\n");
+			exit(EXIT_FAILURE);
+		}
+	}
 	if(foundF == 0){
-		perror("Required socket name");
+		perror("Required socket name\n");
 		exit(EXIT_FAILURE);
 	}
 	return conf;
