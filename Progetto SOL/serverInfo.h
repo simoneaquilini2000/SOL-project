@@ -7,7 +7,7 @@
 #define N_INFO 5 //numero di righe da parsare dal file di testo
 
 typedef struct s{
-	size_t maxStorageSpace; //massimo spazio di configurazione
+	size_t maxStorageSpace; //massimo spazio di memorizzazione(in bytes)
 	int nMaxFile; //massimo numero di file memorizzabili
 	int nWorkers; //numero di thread workers
 	char socketPath[1024]; //path del socket

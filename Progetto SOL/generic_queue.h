@@ -35,7 +35,7 @@ void defaultFreeFunct(void*);
 GenericQueue createQueue(int (*) (void*, void*), void (*) (void*), void (*) (void*));
 
 //crea un nodo generico
-GenericNode* createNode(void *);
+static GenericNode* createNode(void *);
 
 /*
 inserimento in coda di un nuovo elemento:

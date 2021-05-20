@@ -3,6 +3,9 @@
 	e/o di lettura/scrittura
 */
 
+//funzione per attendere X msec
+void msleep(int);
+
 //utility per eliminare caratteri '\r' e '\n' da una stringa
 void myStrNCpy(char *, char *, int);
 

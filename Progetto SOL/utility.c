@@ -1,9 +1,25 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<unistd.h>
+#include<time.h>
+#include<math.h>
 #include<string.h>
 #include<errno.h>
 #include "utility.h"
+
+/*
+	funzione di attesa in millisecondi(rientrante)
+*/
+void msleep(int msec){
+	struct timespec ts, tm;
+
+	ts.tv_sec = msec / 1000;
+	ts.tv_nsec = (msec % 1000) * pow(10, 6);
+
+	do{
+		nanosleep(&ts, &tm);
+	}while(errno == EINTR);
+}
 
 void clearBuffer(char in[], int len){
 	int i;

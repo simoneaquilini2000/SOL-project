@@ -44,7 +44,7 @@ GenericQueue createQueue(int (*comp) (void*, void*), void (*print) (void*), void
 	return q;
 }
 
-GenericNode* createNode(void *ptr){
+static GenericNode* createNode(void *ptr){
 	GenericNode *x = malloc(sizeof(GenericNode));
 	if(x == NULL)
 		return NULL;
@@ -71,7 +71,6 @@ int push(GenericQueue *q, void *ptr){
 }
 
 void* pop(GenericQueue *q){
-	//printf("Esito isEmpty = %d\n", isEmpty(*q));
 	if(isEmpty(*q) == 1){
 		printf("Ciao\n");
 		return NULL;
@@ -89,13 +88,6 @@ void* pop(GenericQueue *q){
 
 	free(result);
 	q->size--;
-	/*if(ris == NULL)
-		printf("BAB\n");
-	else
-		printf("BOB\n");*/
-
-	//printf("Stampo roba estratta\n");
-	//q->printFunct(ris);
 
 	return ris;
 }
@@ -112,15 +104,12 @@ void deleteElement(GenericQueue *q, void *ptr){
 
 	while(corr != NULL){
 		if(q->comparison(corr->info, ptr) == 1){
-			printf("Sto eliminando un descrittore di connessione\n");
 			if(prec == NULL){
-				printf("Elimino in testa\n");
 				toDel = corr;
 				corr = corr->next;
 				q->freeFunct(toDel->info);
 				free(toDel);
 			}else{
-				printf("Elimino in mezzo\n");
 				toDel = corr;
 				corr = corr->next;
 				prec->next = corr;
@@ -129,7 +118,6 @@ void deleteElement(GenericQueue *q, void *ptr){
 			}
 			q->size--;
 		}else{
-			printf("Scorro\n");
 			prec = corr;
 			corr = corr->next;
 		}
@@ -165,24 +153,16 @@ void printQueue(GenericQueue q){
 }
 
 void freeQueue(GenericQueue *q){
-	/*if(q->comparison != NULL)
-		free(q->comparison);
-	if(q->printFunct != NULL)
-		free(q->printFunct);*/
 
 	GenericNode* corr = q->queue.head;
 	GenericNode* toDel;
 
 	while(corr != NULL){
+		printf("Sto eliminando");
 		toDel = corr;
 		corr = corr->next;
 		q->freeFunct(toDel->info);
 		free(toDel);
-		//printf("Sto liberando\n");
 		q->size--;
-	}
-
-	/*if(q->freeFunct != NULL)
-		free(q->freeFunct);*/
-	//printf("FINE\n"); 
+	} 
 }

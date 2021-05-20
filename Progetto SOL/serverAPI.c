@@ -4,7 +4,7 @@
 #include<sys/types.h>
 #include<sys/socket.h>
 #include<sys/un.h>
-#include<limits.h>
+//#include<limits.h>
 #include<fcntl.h>
 #include<errno.h>
 #include<time.h>
@@ -17,26 +17,19 @@
 
 int comm_socket_descriptor; //descrittore del socket lato client
 
-extern ClientConfigInfo c;
+extern ClientConfigInfo c; //struttura di configurazione del client
 
-/*
-	funzione di attesa in millisecondi(rientrante)
-*/
-void msleep(int msec){
-	struct timespec ts, tm;
-
-	ts.tv_sec = msec / 1000;
-	ts.tv_nsec = (msec % 1000) * pow(10, 6);
-
-	do{
-		nanosleep(&ts, &tm);
-	}while(errno == EINTR);
-}
+extern int imConnected; //flag che mi dice se sono connesso con il server o meno
 
 int openConnection(const char* sockName, int msec, const struct timespec abstime){
 	int connected = 0;
 	struct sockaddr_un sa;
 	double max_nsec = (abstime.tv_sec * pow(10, 9)) + abstime.tv_nsec;
+
+	if(imConnected == 1){
+		errno = EPERM; //non posso riconettermi se sono già connesso
+		return -1;
+	}
 
 	if(strcmp(sockName, c.socketName) != 0){
 		errno = EINVAL; //argomento non valido
@@ -71,6 +64,11 @@ int openConnection(const char* sockName, int msec, const struct timespec abstime
 }
 
 int closeConnection(const char* sockName){
+	if(imConnected == 0){
+		errno = EPERM; //non posso chiudere una connessione se non sono attualmente connesso con il server
+		return -1;
+	}
+
 	if(strcmp(sockName, c.socketName) != 0){
 		errno = EINVAL; //argomento non valido
 		return -1;
@@ -112,12 +110,17 @@ int openFile(const char* pathname, int flags){
 	}
 	MyRequest r;
 	int ris, l;
-	char buf[PATH_MAX];
+	char absPath[PATH_MAX], pathBackup[PATH_MAX];
+	memset(absPath, 0, sizeof(absPath));
+	memset(pathBackup, 0, sizeof(pathBackup));
+
+	strncpy(pathBackup, pathname, strlen(pathname));
 
 	memset(&r, 0, sizeof(r));
 	//r.comm_socket = comm_socket_descriptor;
 	r.flags = flags;
 	r.type = OPEN_FILE;
+	getAbsPathFromRelPath(pathBackup, absPath, PATH_MAX);
 	/*char *res = realpath(pathname, buf);
 	if(res == NULL){
 		perror("File to open not found!\n");
@@ -125,8 +128,8 @@ int openFile(const char* pathname, int flags){
 		return -1;
 	}*/
 	//r.request_content = malloc(sizeof(char) * (strlen(pathname) + 1));
-	strncpy(r.request_content, pathname, strlen(pathname));
-	r.request_content[strlen(pathname)] = '\0';
+	strncpy(r.request_content, absPath, strlen(absPath));
+	r.request_content[strlen(absPath)] = '\0';
 	r.timestamp = time(NULL);
 	r.request_dim = strlen(r.request_content);
 
@@ -163,13 +166,18 @@ int readFile(const char* pathname, void** buf, size_t* size){
 	int l;
 	int ris;
 	int buf_size;
-	char b[4096];
+	char absPath[PATH_MAX], pathBackup[PATH_MAX];
+	memset(absPath, 0, sizeof(absPath));
+	memset(pathBackup, 0, sizeof(pathBackup));
+
+	strncpy(pathBackup, pathname, strlen(pathname));
 
 	memset(&r, 0, sizeof(r));
 	r.type = READ_FILE;
 	r.flags = 0;
 	r.timestamp = time(NULL);
-	strncpy(r.request_content, pathname, strlen(pathname));
+	getAbsPathFromRelPath(pathBackup, absPath, PATH_MAX);
+	strncpy(r.request_content, absPath, strlen(absPath));
 	r.request_dim = strlen(r.request_content);
 
 	if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){
@@ -276,28 +284,31 @@ int readNFiles(int N, const char* dirname){
 }
 
 int writeFile(const char* pathname, const char* dirname){
-	printf("Scrivo file: %s\n", pathname);
+	//printf("Scrivo file: %s\n", pathname);
 
 	char *fileContent;
 	int fileContentDim, l, result;
 	char absPath[PATH_MAX];
+	memset(absPath, 0, sizeof(absPath));
 	//funzione per cercare file che ritorna *char nel quale ho il contenuto del file
 	char *ris = readFileContent(pathname, &fileContent);
 	MyRequest r;
+	memset(&r, 0, sizeof(MyRequest));
 
 	if(ris == NULL){
+		perror("Non ho trovato il file richiesto\n");
 		errno = ENOENT;
 		return -1;
 	}
 	//setup richiesta
 	fileContentDim = strlen(fileContent);
 	printf("Lunghezza contenuto del file da scrivere = %d\n", fileContentDim);
-	//realpath(pathname, absPath); //sicuro che absPath non è vuoto in quanto ris != NULL
+	realpath(pathname, absPath); //sicuro che absPath non è vuoto in quanto ris != NULL
 	r.type = WRITE_FILE;
 	r.timestamp = time(NULL);
 	r.flags = 0;
-	strncpy(r.request_content, pathname, strlen(pathname));
-	r.request_dim = strlen(pathname);
+	strncpy(r.request_content, absPath, strlen(absPath));
+	r.request_dim = strlen(absPath);
 
 	//scrittura richiesta(ricevuta dal manager)
 	if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){
@@ -334,6 +345,9 @@ int writeFile(const char* pathname, const char* dirname){
 		case -3: 
 			errno = EPERM; //operazione non permessa
 			return -1;
+		case -4: 
+			errno = EIO; //non posso scrivere un file la cui dimensione è > del maxStorageSpace della fileCache
+			return -1;
 		default: break;
 	}
 	errno = 0;
@@ -344,12 +358,18 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
 	MyRequest r;
 	int l;
 	int ris;
+	char pathBackup[PATH_MAX], absPath[PATH_MAX];
+	memset(absPath, 0, sizeof(absPath));
+	memset(pathBackup, 0, sizeof(pathBackup));
+
+	strncpy(pathBackup, pathname, strlen(pathname)); 
 
 	memset(&r, 0, sizeof(r));
 	r.type = APPEND_FILE;
 	r.flags = 0;
 	r.timestamp = time(NULL);
-	strncpy(r.request_content, pathname, strlen(pathname));
+	getAbsPathFromRelPath(pathBackup, absPath, PATH_MAX);
+	strncpy(r.request_content, absPath, strlen(absPath));
 	r.request_dim = strlen(r.request_content);
 
 	//printf("Voglio appendere %s\n", (char*)buf);
@@ -397,6 +417,9 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
 	if(ris == -2){
 		errno = EACCES; //file da scrivere in append non è stato ancora aperto
 		return -1;
+	}else if(ris == -3){
+		errno = EPERM; //non posso appendere un file se la sua dimensione supererebbe il maxStorageSpace della fileCache
+		return -1;
 	}
 	errno = 0;
 	//printf("SUCCESS\n");
@@ -407,12 +430,18 @@ int closeFile(const char* pathname){
 	MyRequest r;
 	int l;
 	int ris;
+	char pathBackup[PATH_MAX], absPath[PATH_MAX];
+	memset(absPath, 0, sizeof(absPath));
+	memset(pathBackup, 0, sizeof(pathBackup));
+
+	strncpy(pathBackup, pathname, strlen(pathname)); 
 
 	memset(&r, 0, sizeof(r));
 	r.type = CLOSE_FILE;
 	r.flags = 0;
 	r.timestamp = time(NULL);
-	strncpy(r.request_content, pathname, strlen(pathname));
+	getAbsPathFromRelPath(pathBackup, absPath, PATH_MAX);
+	strncpy(r.request_content, absPath, strlen(absPath));
 	r.request_dim = strlen(r.request_content);
 
 	if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){
@@ -442,12 +471,18 @@ int removeFile(const char* pathname){
 	MyRequest r;
 	int l;
 	int ris;
+	char pathBackup[PATH_MAX], absPath[PATH_MAX];
+	memset(absPath, 0, sizeof(absPath));
+	memset(pathBackup, 0, sizeof(pathBackup));
+
+	strncpy(pathBackup, pathname, strlen(pathname)); 
 
 	memset(&r, 0, sizeof(r));
 	r.type = REMOVE_FILE;
 	r.flags = 0;
 	r.timestamp = time(NULL);
-	strncpy(r.request_content, pathname, strlen(pathname));
+	getAbsPathFromRelPath(pathBackup, absPath, PATH_MAX);
+	strncpy(r.request_content, absPath, strlen(absPath));
 	r.request_dim = strlen(r.request_content);
 
 	if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){

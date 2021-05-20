@@ -2,6 +2,7 @@
 	Header che definisce la struttura in memoria principale di un file
 	e le operazioni che possono essere effettuate su di essi
 */
+#include<limits.h>
 
 typedef struct lso{
 	int opType; // tipo operazione(prenderà i valori di RequestType, vedi request.h)
@@ -10,7 +11,7 @@ typedef struct lso{
 }LastSuccessfulOperation;
 
 typedef struct fi{
-	char filePath[2048]; //path assoluto del file
+	char filePath[PATH_MAX]; //path assoluto del file
 	int dim; //dimensione attuale del file
 	char *content; //contenuto
 	time_t timestamp; //timestamp dell'ultima modifica
@@ -29,8 +30,23 @@ void filePrint(void*);
 //funzione di liberazione di memoria di un singolo file
 void freeFile (void*);
 
+//funzione che estrapola il nome del file da un path
+char* getFileNameFromPath(char[]);
+
 //funzione che esegue il salvataggio di un file in una directory
 int saveFile(MyFile, const char[]);
 
+/*
+	funzione che restituisce, nel secondo parametro,
+	l'intero contenuto del file specificato come primo parametro.
+	Ritorna NULL in caso di errore
+*/
 char* readFileContent(const char *, char **);
+
+/*
+	Funzione di traduzione da path relativo ad assoluto
+	(il risultato sarà salvato nel secondo parametro, la cui lunghezza è
+	rappresentata dal terzo)
+*/
+void getAbsPathFromRelPath(char *, char[], int);
 

@@ -1,3 +1,10 @@
+/*
+	Header contenente strutture e prototipi di 
+	funzioni utili alla configurazione del client,
+	cioè parsing delle opzioni(di configurazione e non)
+	da cmd e costruzione coda delle richieste
+	da spedire al server
+*/
 
 #define ALL_OPTIONS "h::p::f:w:W:r:R::d:c:t:"
 

@@ -134,10 +134,13 @@ int buildInsertRequest(int type, char *arg){
 		r->type = type;
 		//fileToFind = getFileNameFromPath(token);
 		filePath = realpath(token, buf); //ottengo path assoluto dato quello relativo
-		if(filePath == NULL){
+		if(filePath == NULL && type == WRITE_FILE){
 			printf("Non ho trovato file %s\n", token);
 		}else{
-			strncpy(r->request_content, buf, strlen(buf));
+			if(type != WRITE_FILE)
+				strncpy(r->request_content, token, strlen(token));
+			else
+				strncpy(r->request_content, buf, strlen(buf));
 			if(push(&toSendRequestQueue, (void*)r) == -1){
 				perror("errore push!");
 				exit(EXIT_FAILURE);
@@ -167,12 +170,8 @@ int buildReadNRequest(int type, char *arg){
 		char buf[arg_size + 1];
 		strncpy(buf, arg, arg_size);
 		//printf("Buffer = %s\n", buf);
-		ris = atoi(buf);
+		//ris = atoi(buf);
 		//printf("ris = %d\n", ris);
-		if(ris < 0){
-			printf("MALE!\n");
-			return -1;
-		}
 		strncpy(toAdd->request_content, arg, strlen(arg));
 	}
 
@@ -201,9 +200,6 @@ int navigateFileSystem(char *rootPath, int n, int flag){
 
 	if(chdir(rootPath) == -1)
 		return 0;
-
-
-	//printf("")
 
 	errno = 0;
 	while((actFile = readdir(currentDir)) != NULL && errno == 0){

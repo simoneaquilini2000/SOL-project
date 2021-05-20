@@ -29,6 +29,8 @@ int closeConnection(const char*);
 		errno = EAGAIN -> errore nella read o write della richiesta o risposta
 		errno = EEXIST -> O_CREATE è specificato, ma il file su cui operare è già presente in cache
 		errno = ENOENT -> O_CREATE non specificato ed il file su cui operare non è presente in cache
+		errno = EINVAL -> flag diverso sia da 0 che da O_CREAT
+		errno = EPERM -> file da aprire è già aperto
 */
 int openFile(const char*, int);
 
@@ -44,10 +46,34 @@ int openFile(const char*, int);
 */
 int readFile(const char*, void**, size_t*);
 
+/*
+	Legge N file dal server(se N <= 0 o > del numero di file nel server
+	li legge tutti) e li memorizza nella cartella passata come secondo 
+	parametro(se != NULL).Ritorna il numero di file letti con successo,
+	-1 altrimenti e setta errno:
+		errno = EAGAIN -> errore di read/write
+		errno = EIO -> cartella dove salvare i file inesistente
+*/
 int readNFiles(int, const char*);
 
+/*
+	Scrive il file(il cui path è passato come primo parametro) nel server.
+	Ritorna 0 in caso di succeso, -1 altrimenti e setta errno:
+		errno = ENOENT -> file da scrivere non trovato lato client o lato server
+		errno = EAGAIN -> errore di read/write
+		errno = EACCES -> file non aperto
+		errno = EPERM -> prima devi eseguire con successo openFile(pathName, O_CREAT)
+*/
 int writeFile(const char*, const char*);
 
+/*
+	Estende il contenuto del file(passato come 1° parametro) con
+	i dati nel buffer.Ritorna 0 in caso di successo, -1 altrimenti e setta
+	errno:
+		errno = EAGAIN -> errore read/write
+		errno = EACCES -> file da appendere non aperto
+		errno = ENOENT -> file specificato non presente in cache
+*/
 int appendToFile(const char*, void*, size_t, const char*);
 
 /*

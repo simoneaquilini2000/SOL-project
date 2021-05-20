@@ -1,7 +1,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-#include<limits.h>
+//#include<limits.h>
 #include<time.h>
 #include<fcntl.h>
 #include<unistd.h>
@@ -22,7 +22,7 @@ int fileComparison(void* f1, void *f2){
 
 void filePrint(void* info){
 	if(info == NULL)
-		printf("BAB\n");
+		return;
 	MyFile f = *(MyFile*) info;
 	char buff[20];
 
@@ -148,4 +148,56 @@ char* readFileContent(const char *pathname, char **fileContent){
 	//printf("Contenuto: %s\n", fileContent);
 
 	return *fileContent;
+}
+
+void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
+    if(pathname == NULL || strcmp(pathname, "") == 0)
+        return;
+    char currWorkDir[1024], pathBackup[1024];
+    getcwd(currWorkDir, 1024);
+    strncpy(pathBackup, pathname, strlen(pathname));
+
+    //salvo preventivamente la cwd in modo da poter tornare qui in modo sicuro
+
+    if(pathname[0] == '/'){
+        printf("Pathname è già un path assoluto\n");
+		strncpy(absPath, pathname, strlen(pathname));
+        return;
+    }
+    //guardo se pathname inizia con /, se sì ritorno perchè pathname è già assoluto
+
+    char *token = strtok(pathname, "/");
+    char *fileName;
+    //divido stringa in base a carattere '/'
+	
+    //printf("Pathname attuale = %s\n", pathname);
+
+    if(strcmp(token, pathBackup) == 0){ //non ho '/' quindi ho un solo token
+        getcwd(absPath, len);
+        if(strlen(absPath) + strlen(pathBackup) + 2 < len){
+            strncat(absPath, "/", 1);
+            strncat(absPath, pathBackup, strlen(pathBackup));
+        }
+        return;
+    }
+
+    while(token != NULL){
+        fileName = malloc(strlen(token) + 1);
+        strncpy(fileName, token, strlen(token));
+        //per ogni token cambio cwd nella cartella indicata dal token e mi salvo il precedente
+        if(chdir(token) == -1){
+            break;
+        }
+        token = strtok(NULL, "/");
+        if(token != NULL)
+            free(fileName);
+    }
+    //una volta finito il ciclo metto in un buffer la cwd e ci appendo il nome del file(quello sarà il mio path assoluto)
+    getcwd(absPath, len);
+    if(strlen(absPath) + strlen(fileName) + 2 < len){
+        strncat(absPath, "/", 1);
+        strncat(absPath, fileName, strlen(fileName));
+    }
+
+    chdir(currWorkDir); //torno a cwd iniziale
 }
