@@ -10,8 +10,9 @@ serverInfo startConfig(const char* sockPath){
 	FILE *f;
 	int i = 0, j;
 	char buf[1024], errMess[1024];
-	char *params[N_INFO];
+	char **params = calloc(N_INFO, sizeof(char*));
 	serverInfo s;
+	memset(&s, 0, sizeof(s));
 
 	f = fopen(sockPath, "r");
 	if(f == NULL){
@@ -20,9 +21,19 @@ serverInfo startConfig(const char* sockPath){
 	}
 
 	while(fgets(buf, 1024, f) != NULL && i < N_INFO){
-		myStrNCpy(buf, buf, strlen(buf));
+		//perror("SOS!\n");
+		//myStrNCpy(buf, buf, strlen(buf));
+		//printf("Cosa ho letto dal file prima della formattazione: %s\n", buf);
+		int k = 0;
+		while(buf[k] != '\n' && buf[k] != '\r') k++;
+
+		buf[k] = '\0';
+		printf("Cosa ho letto dal file: %s\n", buf);
+		printf("StrLen di buf = %d\n", strlen(buf));
 		params[i] = malloc(sizeof(char) * (strlen(buf) + 1));
-		strncpy(params[i], buf, strlen(buf));
+		//memset(params[i], 0, sizeof(char) * strlen(buf));
+		strncpy(params[i], buf, strlen(buf) + 1);
+		//printf("Ho inserito in params[%d]: %s\n", i, params[i]);
 		i++;
 	}
 
@@ -48,6 +59,8 @@ serverInfo startConfig(const char* sockPath){
 	for(j = 0; j < i; j++){
 		free(params[j]);
 	}
+
+	free(params);
 
 	fclose(f);
 	return s;

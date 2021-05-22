@@ -1,5 +1,6 @@
 #include<stdio.h>
 #include<stdlib.h>
+#include <string.h>
 #include "generic_queue.h"
 
 void defaultPrinter(void *n){
@@ -46,6 +47,7 @@ GenericQueue createQueue(int (*comp) (void*, void*), void (*print) (void*), void
 
 static GenericNode* createNode(void *ptr){
 	GenericNode *x = malloc(sizeof(GenericNode));
+	memset(x, 0, sizeof(GenericNode));
 	if(x == NULL)
 		return NULL;
 	x->info = ptr;
@@ -86,7 +88,7 @@ void* pop(GenericQueue *q){
 		q->queue.head = q->queue.head->next;
 	}
 
-	free(result);
+	//free(result);
 	q->size--;
 
 	return ris;
@@ -105,16 +107,28 @@ void deleteElement(GenericQueue *q, void *ptr){
 	while(corr != NULL){
 		if(q->comparison(corr->info, ptr) == 1){
 			if(prec == NULL){
-				toDel = corr;
-				corr = corr->next;
+				toDel = q->queue.head;
+				q->queue.head = q->queue.head->next;
 				q->freeFunct(toDel->info);
 				free(toDel);
+				corr = q->queue.head;
 			}else{
-				toDel = corr;
-				corr = corr->next;
-				prec->next = corr;
-				q->freeFunct(toDel->info);
-				free(toDel);
+				if(corr == q->queue.tail){
+					toDel = corr;
+					q->queue.tail = prec;
+					q->queue.tail->next = corr->next;
+					corr = corr->next;
+					q->freeFunct(toDel->info);
+					free(toDel);
+				}else{
+					toDel = corr;
+					//q->printFunct(toDel->info);
+					corr = corr->next;
+					//q->printFunct(toDel->info);
+					prec->next = corr;
+					q->freeFunct(toDel->info);
+					free(toDel);
+				}
 			}
 			q->size--;
 		}else{
@@ -158,7 +172,7 @@ void freeQueue(GenericQueue *q){
 	GenericNode* toDel;
 
 	while(corr != NULL){
-		printf("Sto eliminando");
+		//printf("Sto eliminando");
 		toDel = corr;
 		corr = corr->next;
 		q->freeFunct(toDel->info);

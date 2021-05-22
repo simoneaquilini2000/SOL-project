@@ -131,6 +131,7 @@ int buildInsertRequest(int type, char *arg){
 
 	while(token != NULL){
 		MyRequest *r = malloc(sizeof(MyRequest));
+		memset(r, 0, sizeof(MyRequest));
 		r->type = type;
 		//fileToFind = getFileNameFromPath(token);
 		filePath = realpath(token, buf); //ottengo path assoluto dato quello relativo
@@ -154,6 +155,7 @@ int buildInsertRequest(int type, char *arg){
 int buildReadNRequest(int type, char *arg){
 	long ris;
 	MyRequest *toAdd = malloc(sizeof(MyRequest));
+	memset(toAdd, 0, sizeof(MyRequest));
 	
 	toAdd->type = type;
 
@@ -217,6 +219,7 @@ int navigateFileSystem(char *rootPath, int n, int flag){
 			}else{
 				if((flag && readFiles < n) || !flag){
 					MyRequest *r = malloc(sizeof(MyRequest));
+					memset(r, 0, sizeof(MyRequest));
 					r->type = WRITE_FILE;
 					//printf("Inserisco richiesta WRITE_FILE per il file %s\n", actFile->d_name);
 					if(realpath(actFile->d_name, buf) != NULL){

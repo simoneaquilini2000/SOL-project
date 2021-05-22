@@ -23,7 +23,10 @@ int fileComparison(void* f1, void *f2){
 void filePrint(void* info){
 	if(info == NULL)
 		return;
-	MyFile f = *(MyFile*) info;
+	MyFile f;
+	memset(&f, 0, sizeof(MyFile));
+
+	f = *(MyFile*) info;
 	char buff[20];
 
 	//ottengo in buff una stringa nel formato Y-m-d H:M:S del timestamp
@@ -48,8 +51,9 @@ void filePrint(void* info){
 void freeFile(void* s){
 	MyFile *f = (MyFile*)s;
 
-	free(f->content);
-	free(f); 
+	if(f->content != NULL)
+		free(f->content);
+	//free(f); 
 }
 
 char* getFileNameFromPath(char path[]){
@@ -58,6 +62,7 @@ char* getFileNameFromPath(char path[]){
 
 	while(token != NULL){
 		ris = malloc(strlen(token) + 1);
+		memset(ris, 0, strlen(token));
 		strncpy(ris, token, strlen(token));
 		token = strtok(NULL, "/");
 		if(token != NULL)
@@ -183,6 +188,7 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
 
     while(token != NULL){
         fileName = malloc(strlen(token) + 1);
+		memset(fileName, 0, strlen(token) + 1);
         strncpy(fileName, token, strlen(token));
         //per ogni token cambio cwd nella cartella indicata dal token e mi salvo il precedente
         if(chdir(token) == -1){

@@ -42,7 +42,7 @@ void requestPrint(void* c){
 
 	printf("Communication descriptor: %d\n", d.comm_socket);
 	printf("Request Dimension: %d\n", d.request_dim);
-	printf("Request content: %s\n", d.request_content);
+	//printf("Request content: %s\n", d.request_content);
 	printf("Request send timestamp: %s\n", buff);
 	printf("Type = %d\n\n", d.type);
 }

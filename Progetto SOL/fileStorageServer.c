@@ -1,6 +1,16 @@
 /*
-	Q&A:
-	- Il server elimina file solo se questi sono stati modificati?
+	TO DO:
+	-gestione segnali:
+		SIGINT/SIGQUIT -> avrò flag corrispondente e quando questo diventa 1,
+		signal_broadcast per svegliare i workers(che controlleranno tale condizione e
+		nel caso terminano) e pipe, ascoltata dal manager, che se vi legge
+		tale segnale termina il manager e fa la free delle strutture
+
+		SIGHUP -> flag corrispondente inviato al manager che terminerà la sua esecuzione
+		solo quando la lista dei descrittori di connessioni sarà vuota e, sulla base
+		di tale condizione, sveglierà i workers con una signal_broadcast e setterà
+		un flag apposito per far sì che al loro risveglio gli workers termino normalmente.
+		Successivamente farà la free delle strutture.
 */
 
 #include<stdio.h>
@@ -28,6 +38,9 @@ static pthread_mutex_t lSocketMutex = PTHREAD_MUTEX_INITIALIZER;
 
 //flag che dice se è arrivato sigHup
 int sigHupFlag = 0;
+
+//flag che dice se è arrivato SIGINT o SIGQUIT
+int sigIntOrQuitFlag = 0;
 
 //mutex per accedere ai flag sopra citati
 pthread_mutex_t flagAccess = PTHREAD_MUTEX_INITIALIZER;
@@ -124,7 +137,7 @@ static void* signalHandlerActivity(void* args){
 	if(sig_num == SIGHUP){
 
 	}else{
-		exit(EXIT_SUCCESS);
+		//exit(EXIT_SUCCESS);
 		pthread_mutex_lock(&pipeAccessMutex);
 		close(p[0]);
 		close(p[1]);
@@ -144,13 +157,13 @@ static void* signalHandlerActivity(void* args){
 		freeQueue(&fileCache);
 		pthread_mutex_unlock(&fileCacheMutex);
 		printf("Ho ricevuto SIGINT o SIGQUIT quindi esco3\n");
-		killThreads();
+		//killThreads();
 		pthread_mutex_lock(&connectionsQueueMutex);
 		FD_ZERO(&active_fds);
 		freeQueue(&connections);
 		pthread_mutex_unlock(&connectionsQueueMutex);
 		printf("Ho ricevuto SIGINT o SIGQUIT quindi esco4\n");
-		//exit(EXIT_SUCCESS);
+		exit(EXIT_SUCCESS);
 	}
 }
 
@@ -227,6 +240,7 @@ static void* managerThreadActivity(void* args){
 				if(FD_ISSET(index, &rdset)){ //se tale descrittore è pronto esaudisco la richiesta
 					if(index == lfd){ //listen socket pronto(l'accept non si blocca)
 						MyDescriptor *newConn = malloc(sizeof(MyDescriptor));
+						memset(newConn, 0, sizeof(*newConn));
 						newConn->cfd = accept(lfd, NULL, 0);
 						pthread_mutex_lock(&connectionsQueueMutex);
 						FD_SET(newConn->cfd, &active_fds);
@@ -267,12 +281,12 @@ static void* managerThreadActivity(void* args){
 								FD_CLR(index, &active_fds);
 								fd_num = updateActiveFds(active_fds, fd_num);
 								printf("Prima di terminare connessione:\n");
-								printQueue(connections);
+								//printQueue(connections);
 								MyDescriptor d;
 								d.cfd = index;
 								deleteElement(&connections, (void*) &d); //elimino descrittore corrispondente dalla coda di connessioni
 								printf("Dopo termine connessione:\n");
-								printQueue(connections);
+								//printQueue(connections);
 								pthread_mutex_unlock(&connectionsQueueMutex);
 							}else{ //Inserisco in ME una nuova richiesta da soddisfare e la segnalo
 								toAdd.comm_socket = index;
@@ -281,13 +295,14 @@ static void* managerThreadActivity(void* args){
 								fd_num = updateActiveFds(active_fds, fd_num);
 								pthread_mutex_unlock(&connectionsQueueMutex);
 								MyRequest *req = malloc(sizeof(MyRequest));
+								memset(req, 0, sizeof(MyRequest));
 								req = memcpy(req, &toAdd, sizeof(MyRequest)); //copio la richiesta letta all indirizzo di req
 								pthread_mutex_lock(&requestsQueueMutex);
-									if(push(&requests, (void *) req) == -1){
-										pthread_mutex_unlock(&requestsQueueMutex);
-										perror("Errore push!");
-										exit(EXIT_FAILURE);
-									}
+								if(push(&requests, (void *) req) == -1){
+									pthread_mutex_unlock(&requestsQueueMutex);
+									perror("Errore push!");
+									exit(EXIT_FAILURE);
+								}
 								pthread_cond_signal(&waitingForRequestsList);
 								pthread_mutex_unlock(&requestsQueueMutex);
 							}
@@ -297,6 +312,101 @@ static void* managerThreadActivity(void* args){
 			}
 		}
 	}
+}
+
+int verifyReplaceCondition(RequestType r, int data_amount){
+	if(r == OPEN_FILE){
+		/*
+			modifica la cache size quindi ho rimpiazzamento se cacheSize + 1 > maxCacheSize
+		*/
+		pthread_mutex_lock(&fileCacheMutex);
+		int actQueueSize = fileCache.size;
+		pthread_mutex_unlock(&fileCacheMutex);
+		pthread_mutex_lock(&updateStatsMutex);
+		int condition = (actQueueSize + 1) > s.nMaxFile;
+		pthread_mutex_unlock(&updateStatsMutex);
+
+		if(condition == 1)
+			return 1;
+		return 0;
+	}
+
+	if(r == APPEND_FILE || r == WRITE_FILE){
+		/*
+			modifico la cache storage size quindi ho rimpiazzamento se
+			actStorageSize + buf_size > maxCacheStorageSpace
+		*/
+		pthread_mutex_lock(&updateStatsMutex);
+		int condition = serverStatistics.fileCacheActStorageSize + data_amount > s.maxStorageSpace;
+		pthread_mutex_unlock(&updateStatsMutex);
+
+		if(condition == 1)
+			return 1;
+		return 0;
+	}
+	return -1; //tipo di richiesta sbagliato
+}
+
+/*
+	Verifica che ci siano le condizioni per eliminare file dalla cache
+	e permettere operazioni di creazione, scrittura od estensione(
+	quindi verrano considerate solo richieste di tipo OPEN_FILE,
+	WRITE_FILE ed APPEND_FILE in quanto le altre non prevedono
+	l'incremento né della size né della storage size attuale della
+	cache).
+	Ritorna 1 se ci sono, 0 altrimenti(-1 se la funzione
+	non è definita per il tipo di richiesta passatogli).
+*/
+int verifyReplacePossibility(RequestType t, char requestTarget[], int dataAmount){
+	if(t == OPEN_FILE){
+		/*
+			Dato che questa richiesta modifica solo la size della cache,
+			condizione necessaria e sufficiente per permettere l'eventuale creazione di un file
+			è che ci sia almeno un file vittima che sia stato modificato(flag modified = 1)
+		*/
+		pthread_mutex_lock(&fileCacheMutex);
+		GenericNode *corr = fileCache.queue.head;
+		pthread_mutex_unlock(&fileCacheMutex);
+
+		while(corr != NULL){
+			MyFile *f = (MyFile*) corr->info;
+			if(f->modified == 1)
+				return 1;
+			corr = corr->next;
+		}
+		return 0;
+	}
+	
+	if(t == WRITE_FILE || t == APPEND_FILE){
+		/*
+			Queste due richieste incrementano la actStorageSize della cache quindi
+			condizione necessaria e sufficiente affinchè sia possibile scrivere o
+			appendere un file è che actStorageSize + buf_size - SUM({f_i | f_i.modified == 1}) <= s.maxStorageSpace
+			cioè che se incremento di buf_size la storage size attuale riesco a trovare
+			una serie di file(precedentemente modificati) t.c. la loro eliminazione mi libera spazio
+			sufficiente per la scrittura. Ovviamente in tale serie non ci deve essere il file su cui sto operando
+		*/
+		pthread_mutex_lock(&fileCacheMutex);
+		GenericNode *corr = fileCache.queue.head;
+		pthread_mutex_unlock(&fileCacheMutex);
+		pthread_mutex_lock(&updateStatsMutex);
+		int actCacheStorageSize = serverStatistics.fileCacheActStorageSize;
+		int maxCacheStorageSize = s.maxStorageSpace;
+		pthread_mutex_unlock(&updateStatsMutex);
+		int victimFilesDimSum = 0;
+
+		while(corr != NULL){
+			MyFile *f = (MyFile*) corr->info;
+			if(f->modified == 1 && strcmp(f->filePath, requestTarget) != 0)
+				victimFilesDimSum += f->dim;
+			corr = corr->next;
+		}
+		if(actCacheStorageSize + dataAmount - victimFilesDimSum <= maxCacheStorageSize)
+			return 1;
+		return 0;
+
+	}
+	return -1; //tipo di richiesta sbagliato
 }
 
 /*
@@ -312,6 +422,7 @@ static void* managerThreadActivity(void* args){
 int replacingAlgorithm(){
 	pthread_mutex_lock(&fileCacheMutex);
 	int actQueueSize = fileCache.size;
+	//GenericQueue fileCacheBackup = fileCache;
 	pthread_mutex_unlock(&fileCacheMutex);
 	pthread_mutex_lock(&updateStatsMutex);
 	int replaceCondition = (serverStatistics.fileCacheActStorageSize > s.maxStorageSpace || actQueueSize > s.nMaxFile);
@@ -334,22 +445,54 @@ int replacingAlgorithm(){
 			- decremento size e storageSize
 			- freeFile
 	*/
-	pthread_mutex_lock(&fileCacheMutex);
+	/*pthread_mutex_lock(&fileCacheMutex);
 	int isFcEmpty = isEmpty(fileCache);
-	pthread_mutex_unlock(&fileCacheMutex);
+	pthread_mutex_unlock(&fileCacheMutex);*/
 
-	while(isFcEmpty == 0 && replaceCondition == 1){
-		pthread_mutex_lock(&fileCacheMutex);
-		MyFile *toDel = (MyFile*) pop(&fileCache);
-		isFcEmpty = isEmpty(fileCache);
+	//al massimo scorro tutta la lista quind avrò indice i < sizeInizialeCache
+	int initCacheSize = actQueueSize;
+	int i = 0;
+
+	pthread_mutex_lock(&fileCacheMutex);
+	GenericNode *corr = fileCache.queue.head;
+	GenericNode *corrBackup;
+
+	while(i < initCacheSize && replaceCondition == 1){
+		corrBackup = corr->next;
+		MyFile *toDel = (MyFile*) corr->info;
+		if(toDel == NULL)
+			break;
+		if(toDel->modified == 1){
+			printf("Ho selezionato come file vittima: %s\n", toDel->filePath);
+			pthread_mutex_lock(&updateStatsMutex);
+			serverStatistics.fileCacheActStorageSize -= toDel->dim;
+			replaceCondition = (serverStatistics.fileCacheActStorageSize > s.maxStorageSpace || actQueueSize - 1 > s.nMaxFile);
+			pthread_mutex_unlock(&updateStatsMutex);
+			//pthread_mutex_lock(&fileCacheMutex);
+			printf("Stato cache attuale:\n");
+			//printQueue(fileCache);
+			printf("FINE STAMPA CACHE\n");
+			deleteElement(&fileCache, (void*) toDel);
+			printf("Stato cache modificata:\n");
+			printQueue(fileCache);
+			printf("FINE STAMPA CACHE MODIFICATA\n");
+			actQueueSize = fileCache.size ;
+			//pthread_mutex_unlock(&fileCacheMutex);
+		}
+		corr = corrBackup;
+		i++;
+		/*pthread_mutex_lock(&fileCacheMutex);
+		//MyFile *toDel = (MyFile*) pop(&fileCache);
+		//isFcEmpty = isEmpty(fileCache);
 		actQueueSize = fileCache.size;
 		pthread_mutex_unlock(&fileCacheMutex);
 		pthread_mutex_lock(&updateStatsMutex);
 		serverStatistics.fileCacheActStorageSize -= toDel->dim;
 		replaceCondition = (serverStatistics.fileCacheActStorageSize > s.maxStorageSpace || actQueueSize > s.nMaxFile);
 		pthread_mutex_unlock(&updateStatsMutex);
-		freeFile((void*) toDel);
+		freeFile((void*) toDel);*/
 	}
+	pthread_mutex_unlock(&fileCacheMutex);
 
 	//aggiorno eventuali max size o max storage size
 	pthread_mutex_lock(&updateStatsMutex);
@@ -376,6 +519,7 @@ int executeOpenFile(MyRequest r){
 	pthread_mutex_unlock(&fileCacheMutex);
 
 	int result;
+	int replaceResult, replacePossibility, replaceCond;
 	int l;
 
 	if(r.flags == O_CREAT && risFind > 0)
@@ -387,34 +531,49 @@ int executeOpenFile(MyRequest r){
 		if(r.flags == O_CREAT && risFind < 0){ //crea un file, mettilo in coda con il flag di open = 1
 			MyFile f;
 			
-			f.isOpen = 1;
-			f.timestamp = time(NULL);
-			f.isLocked = 0;
-			f.modified = 0;
-			strncpy(f.filePath, r.request_content, strlen(r.request_content));
-			if(strlen(f.filePath) < 4096)
-				f.filePath[strlen(r.request_content)] = '\0';
-			f.content = malloc(25 * sizeof(char)); //dimensione base
-			clearBuffer(f.content, 25);
-			f.dim = 0;
-			f.lastSucceedOp.opType = r.type;
-			f.lastSucceedOp.optFlags = r.flags;
-			f.lastSucceedOp.clientDescriptor = r.comm_socket;
-			MyFile *p = malloc(sizeof(MyFile));
-			memcpy(p, &f, sizeof(MyFile));
-			pthread_mutex_lock(&fileCacheMutex);
-			push(&fileCache, (void*)p);
-			pthread_mutex_unlock(&fileCacheMutex);
-			if(replacingAlgorithm() == 1){ //dopo inserimento in coda ristabilisco integrità del sistema
-				//non ho rimosso files quindi aggiorno eventualmente maxSize della cache
+			//data_amount = 0 perchè sono in una richiesta di tipo OPEN_FILE
+			replacePossibility = verifyReplacePossibility(r.type, r.request_content, 0);
+			replaceCond = verifyReplaceCondition(r.type, 0);
+
+			if(replaceCond == 1 && replacePossibility == 0){
+				result = -4;
+			}else{
+				MyFile *p = malloc(sizeof(MyFile));
+				memset(p, 0, sizeof(MyFile));
+				p->isOpen = 1;
+				p->timestamp = time(NULL);
+				p->isLocked = 0;
+				p->modified = 0;
+				strncpy(p->filePath, r.request_content, strlen(r.request_content));
+				if(strlen(p->filePath) < 4096)
+					p->filePath[strlen(r.request_content)] = '\0';
+				p->content = malloc(25 * sizeof(char)); //dimensione base
+				//clearBuffer(p->content, 25);
+				memset(p->content, 0, 25 * sizeof(char));
+				p->dim = 0;
+				p->lastSucceedOp.opType = r.type;
+				p->lastSucceedOp.optFlags = r.flags;
+				p->lastSucceedOp.clientDescriptor = r.comm_socket;
+				
+				//memcpy(p, &f, sizeof(MyFile));
 				pthread_mutex_lock(&fileCacheMutex);
-				int actQueueSize = fileCache.size;
+				push(&fileCache, (void*)p);
+				//printf("Ho aggiunto file: stampo la nuova cache\n");
+				//printQueue(fileCache);
 				pthread_mutex_unlock(&fileCacheMutex);
-				pthread_mutex_lock(&updateStatsMutex);
-				if(actQueueSize > serverStatistics.fileCacheMaxSize)
-					serverStatistics.fileCacheMaxSize = actQueueSize;
-				pthread_mutex_unlock(&updateStatsMutex);
-			} 
+				replaceResult = replacingAlgorithm();
+				printf("Esito algoritmo di rimpiazzamento: %d\n", replaceResult);
+				if(replaceResult == 1){ //dopo inserimento in coda ristabilisco integrità del sistema
+					//non ho rimosso files quindi aggiorno eventualmente maxSize della cache
+					pthread_mutex_lock(&fileCacheMutex);
+					int actQueueSize = fileCache.size;
+					pthread_mutex_unlock(&fileCacheMutex);
+					pthread_mutex_lock(&updateStatsMutex);
+					if(actQueueSize > serverStatistics.fileCacheMaxSize)
+						serverStatistics.fileCacheMaxSize = actQueueSize;
+					pthread_mutex_unlock(&updateStatsMutex);
+				}
+			}
 		}else if(r.flags != O_CREAT && risFind > 0){ //cerca file in cache ed aggiorna flag isOpen(se è gia == 1, ho un errore)
 			pthread_mutex_lock(&fileCacheMutex);
 			GenericNode *corr = fileCache.queue.head;
@@ -482,6 +641,7 @@ int executeReadFile(MyRequest r){
 				break;
 			}
 			b = malloc(toRead->dim + 1);
+			memset(b, 0, toRead->dim + 1);
 			strncpy(b, toRead->content, toRead->dim);
 			b[toRead->dim] = '\0';
 			res = 0;
@@ -504,6 +664,8 @@ int executeReadFile(MyRequest r){
 
 		if((l = writen(r.comm_socket, b, lung)) == -1)
 			return -1;
+
+		//eventuale free(b) per liberare puntatore allocato sullo heap
 	}
 	return 0;
 }
@@ -602,7 +764,7 @@ int executeRemoveFile(MyRequest r){
 */
 int executeAppendFile(MyRequest r){
 	MyFile f1, toRead;
-	int res = 0, l;
+	int res = 0, l, replaceResult;
 	size_t buf_size;
 	char *buf;
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
@@ -642,6 +804,17 @@ int executeAppendFile(MyRequest r){
 	}
 	buf[l] = '\0';
 
+	//verifica replaceCondition e possibility, se fallisce allora invio result = -4
+	int replaceCondition = verifyReplaceCondition(r.type, buf_size);
+	int replacePossibility = verifyReplacePossibility(r.type, r.request_content, buf_size);
+
+	if(replaceCondition == 1 && replacePossibility == 0){
+		res = -4; //algoritmo di rimpiazzamento fallirebbe quindi non permetto l'esecuzione dell'operazione
+		if((l = writen(r.comm_socket, &res, sizeof(int))) == -1)
+			return -1;
+		return 0;
+	}
+
 	pthread_mutex_lock(&fileCacheMutex);
 	GenericNode* corr = fileCache.queue.head;
 	pthread_mutex_unlock(&fileCacheMutex);
@@ -670,7 +843,7 @@ int executeAppendFile(MyRequest r){
 						perror("Errore realloc");
 					}
 				}
-				strncpy(toAppend->content, buf, strlen(buf));
+				strncat(toAppend->content, buf, strlen(buf));
 				toAppend->dim += l;
 				toAppend->content[toAppend->dim] = '\0';
 				toAppend->modified = 1;
@@ -681,7 +854,9 @@ int executeAppendFile(MyRequest r){
 				pthread_mutex_lock(&updateStatsMutex);
 				serverStatistics.fileCacheActStorageSize += strlen(buf);
 				pthread_mutex_unlock(&updateStatsMutex);
-				if(replacingAlgorithm() == 1){
+				replaceResult = replacingAlgorithm();
+				printf("Esito algoritmo di rimpiazzamento: %d\n", replaceResult);
+				if(replaceResult == 1){
 					//non ho rimosso files, procedo con aggiornamento maxStorageSize
 					pthread_mutex_lock(&updateStatsMutex);
 					if(serverStatistics.fileCacheActStorageSize > serverStatistics.fileCacheMaxStorageSize)
@@ -699,6 +874,7 @@ int executeAppendFile(MyRequest r){
 		//printf("Fine richiesta APPEND_FILE con INsuccesso\n");
 		return -1;
 	}
+	free(buf);
 	//printf("Fine richiesta APPEND_FILE con successo\n");
 	return 0;
 }
@@ -768,7 +944,7 @@ int executeReadNFile(MyRequest r){
 	scrivere il file
 */
 int executeWriteFile(MyRequest r){
-	int buf_size, l, found = 0, result;
+	int buf_size, l, found = 0, result, replaceResult;
 	char *buf;
 	MyFile toFind;
 	memset(&toFind, 0, sizeof(MyFile));
@@ -786,6 +962,17 @@ int executeWriteFile(MyRequest r){
 		return -1;
 
 	buf[l] = '\0';
+
+	//verifica replaceCondition e possibility, se fallisce allora invio result = -5
+	int replaceCondition = verifyReplaceCondition(r.type, buf_size);
+	int replacePossibility = verifyReplacePossibility(r.type, r.request_content, buf_size);
+
+	if(replaceCondition == 1 && replacePossibility == 0){
+		result = -5;
+		if((l = writen(r.comm_socket, &result, sizeof(int))) == -1)
+			return -1;
+		return 0;
+	}
 
 	pthread_mutex_lock(&fileCacheMutex);
 	GenericNode *corr = fileCache.queue.head;
@@ -810,7 +997,9 @@ int executeWriteFile(MyRequest r){
 								result = -4;
 								break;
 							}
+							//MyFile backup = *toWrite; //copia stato attuale del file in caso di rollback
 							toWrite->content = malloc(buf_size + 1);
+							memset(toWrite->content, 0, sizeof(char) * (buf_size + 1));
 							strncpy(toWrite->content, buf, buf_size);
 							toWrite->dim = strlen(toWrite->content);
 							toWrite->content[toWrite->dim] = '\0';
@@ -822,7 +1011,9 @@ int executeWriteFile(MyRequest r){
 							pthread_mutex_lock(&updateStatsMutex);
 							serverStatistics.fileCacheActStorageSize += buf_size;
 							pthread_mutex_unlock(&updateStatsMutex);
-							if(replacingAlgorithm() == 1){
+							replaceResult = replacingAlgorithm();
+							printf("Esito algoritmo di rimpiazzamento: %d\n", replaceResult);
+							if(replaceResult == 1){
 								//non ho rimosso files, procedo con aggiornamento maxStorageSize
 								pthread_mutex_lock(&updateStatsMutex);
 								if(serverStatistics.fileCacheActStorageSize > serverStatistics.fileCacheMaxStorageSize)
@@ -841,6 +1032,7 @@ int executeWriteFile(MyRequest r){
 		result = -1;
 	if((l = writen(r.comm_socket, &result, sizeof(int))) == -1)
 		return -1;
+	free(buf);
 	return 0;
 }
 
@@ -907,19 +1099,25 @@ void commSocketGiveBack(int comm_socket){
 	"restituisce" al manager il descrittore sul quale ha operato
 */
 static void* workerThreadActivity(void* args){
-	MyRequest r; //struttura dove memorizzare la richiesta estratta dalla coda
+	MyRequest *p; //struttura dove memorizzare la richiesta estratta dalla coda
 
-	while(1){
+	while(1){ //da implementare 
 		pthread_mutex_lock(&requestsQueueMutex); //accesso in ME
 		while(isEmpty(requests) == 1){ //coda vuota
 			pthread_cond_wait(&waitingForRequestsList, &requestsQueueMutex);
 		}
-		MyRequest *p = (MyRequest*) pop(&requests); //sono sicuro che p != NULL
+		//controllo se mi è arrivato sigInt o se le connessioni sono finite(se è arrivato sigHup in precedenza) se si break;
+		printf("Estraggo richiesta\n");
+		p = (MyRequest*) pop(&requests); //sono sicuro che p != NULL
 		pthread_mutex_unlock(&requestsQueueMutex);
 		executeRequest(*p);
 		commSocketGiveBack(p->comm_socket);
+		//memset(p, 0, sizeof(p));
+		//printf("Eseguo free della richiesta\n");
+		freeRequest(p);
 		printf("fine POP\n");
 	}
+	return (void*)NULL;
 }
 
 int main(int argc, char const *argv[]){
@@ -940,6 +1138,7 @@ int main(int argc, char const *argv[]){
 	serverStatistics.replaceAlgInvokeTimes = 0;
 	serverStatistics.fileCacheActStorageSize = 0; //s'intende la somma delle dimensioni dei file nel file storage attuale
 	workers = malloc(s.nWorkers * sizeof(pthread_t)); //alloco i TID per i worker threads
+	memset(workers, 0, sizeof(pthread_t) * s.nWorkers);
 	if(workers == NULL){
 		perror("Errore malloc!");
 		exit(EXIT_FAILURE);
@@ -956,7 +1155,7 @@ int main(int argc, char const *argv[]){
 
 	
 	sigfillset(&mask); //blocco tutti i segnali
-	pthread_sigmask(SIG_SETMASK, &mask, NULL); //tale maschera verrà ereditata da thread "figli"
+	pthread_sigmask(SIG_SETMASK, &mask, NULL); //tale maschera verrà ereditata dai thread "figli"
 
 	//creo thread gestore dei segnali
 	if(pthread_create(&s_handler, NULL, &signalHandlerActivity, NULL) == -1){ 

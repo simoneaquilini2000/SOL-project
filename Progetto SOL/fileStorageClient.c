@@ -17,8 +17,7 @@
 #include "serverAPI.h"
 
 ClientConfigInfo c; // struttura che mi conterrà le informazioni di configurazione del client
-GenericQueue toSendRequestQueue; //coda di richieste da mandare al server
-int imConnected = 0; //flag usato per stabilire se sono attualmente connesso al server o meno(ed evitare nuove connessioni)
+GenericQueue toSendRequestQueue; //coda di richieste da dare al server
 
 void printMainRequestInfo(int ris, MyRequest *actReq){
 	printf("Stampo informazioni post esecuzione della richiesta:\n");
@@ -102,21 +101,19 @@ int main(int argc, char const *argv[]){
 	printConfigInfo(c);
 
 	getToSendRequestsFromCmd(argc, argv);
-	printQueue(toSendRequestQueue);
+	//printQueue(toSendRequestQueue);
 
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
-	if(a == 0)
-		imConnected = 1;
 
-	int result = sendRequests();
+	//int result = sendRequests();
 	//toSendRequestQueue = getToSendRequestsFromCmd(argc, argv);
 
 	//printf("Connesso al server = %d\n errno = %d\n", a, errno);
 
-	/*z = openFile("fileDaLeggere1.txt", O_CREAT);
+	z = openFile("fileDaLeggere.txt", O_CREAT);
 	printf("%d %d\n", z, errno);
 
-	z = openFile("../fileDaLeggere2.txt", O_CREAT);
+	z = openFile("fileDaLeggere2.txt", O_CREAT);
 	printf("%d %d\n", z, errno);
 
 	z = openFile("fileDaLeggere3.txt", O_CREAT);
@@ -128,17 +125,17 @@ int main(int argc, char const *argv[]){
 	z = openFile("fileDaLeggere5.txt", O_CREAT);
 	printf("%d %d\n", z, errno);
 
-	z = openFile("fileDaLeggere.txt", O_CREAT);
-	printf("%d %d\n", z, errno);
+	//z = openFile("fileDaLeggere.txt", O_CREAT);
+	//printf("%d %d\n", z, errno);
 
 	z = writeFile("fileDaLeggere.txt", NULL);
 	printf("%d %d\n", z, errno);
 
-	z = writeFile("../fileDaLeggere2.txt", NULL);
+	z = writeFile("fileDaLeggere2.txt", NULL);
 	printf("%d %d\n", z, errno);
 
-	z = writeFile("fileDaLeggere3.txt", NULL);
-	printf("%d %d\n", z, errno);
+	//z = writeFile("fileDaLeggere3.txt", NULL);
+	//printf("%d %d\n", z, errno);
 
 	/*z = writeFile("fileDaLeggere.txt", NULL);
 	printf("%d %d\n", z, errno);*/
@@ -146,8 +143,6 @@ int main(int argc, char const *argv[]){
 	//sleep((rand() % 10) + 3);
 
 	int x = closeConnection(c.socketName);
-	if(x == 0)
-		imConnected = 0;
 	printf("Esito terminazione connesione: %d\n", x);
 	return 0;
 }

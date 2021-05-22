@@ -1,4 +1,5 @@
 CC = gcc
+OTHER_FLAGS = -fsanitize=address -fno-omit-frame-pointer 
 CFLAGS = -g -o
 SOCKNAME = /tmp/config.txt
 COMMON_DEPS = generic_queue.c utility.c request.c file.c

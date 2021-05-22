@@ -4,108 +4,69 @@
 #include<limits.h>
 #include<sys/types.h>
 #include<dirent.h>
+#include "generic_queue.h"
+#include "file.h"
 #include<unistd.h>
-#include<pthread.h>
 
-int p[2];
+GenericQueue coda;
 
-int celleLibere = 1;
+void insert(){
+    MyFile f1, f2, f3;
+    memset(&f1, 0, sizeof(f1));
+    memset(&f2, 0, sizeof(f2));
+    memset(&f3, 0, sizeof(f3));
+    //memset(&f4, 0, sizeof(f4));
 
-pthread_mutex_t mux = PTHREAD_MUTEX_INITIALIZER;
+    strcpy(f1.filePath, "Babbo.txt");
+    strcpy(f2.filePath, "Mamma.txt");
+    strcpy(f3.filePath, "Davide.txt");
 
-pthread_cond_t pList = PTHREAD_COND_INITIALIZER;
-pthread_cond_t cList = PTHREAD_COND_INITIALIZER;
+    MyFile *pf1 = malloc(sizeof(MyFile));
+    memset(pf1, 0, sizeof(MyFile));
+    memcpy(pf1, &f1, sizeof(MyFile));
 
-static void* scriviInPipe(void* args){
-    int arg = *(int*) args;
+    MyFile *pf2 = malloc(sizeof(MyFile));
+    memset(pf2, 0, sizeof(MyFile));
+    memcpy(pf2, &f2, sizeof(MyFile));
 
-    pthread_mutex_lock(&mux);
-    while(celleLibere == 0)
-        pthread_cond_wait(&pList, &mux);
-    celleLibere = 0;
-    write(p[1], &arg, sizeof(int));
-    printf("Ho scritto %d nella pipe\n", arg);
-    pthread_cond_signal(&cList);
-    pthread_mutex_unlock(&mux);
-}
+    MyFile *pf3 = malloc(sizeof(MyFile));
+    memset(pf3, 0, sizeof(MyFile));
+    memcpy(pf3, &f3, sizeof(MyFile));
 
-static void* leggiDaPipe(void* args){
-    int rec;
+    //strcpy(f4.filePath, "Simone.txt");
 
-    pthread_mutex_lock(&mux);
-    while(celleLibere == 1)
-        pthread_cond_wait(&cList, &mux);
-    celleLibere = 1;
-    read(p[0], &rec, sizeof(int));
-    printf("Ho letto %d dalla pipe\n", rec);
-    pthread_cond_signal(&pList);
-    pthread_mutex_unlock(&mux);
-}
+    push(&coda, (void*)pf1);
+    push(&coda, (void*)pf2);
+    push(&coda, (void*)pf3);
 
-void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
-    if(pathname == NULL || strcmp(pathname, "") == 0)
-        return;
-    char currWorkDir[1024], pathBackup[1024];
-    getcwd(currWorkDir, 1024);
-    strncpy(pathBackup, pathname, strlen(pathname));
-
-    //salvo preventivamente la cwd in modo da poter tornare qui in modo sicuro
-
-    if(pathname[0] == '/'){
-        printf("Pathname è già un path assoluto\n");
-        return;
-    }
-    //guardo se pathname inizia con /, se sì ritorno perchè pathname è già assoluto
-
-    char *token = strtok(pathname, "/");
-    char *fileName;
-    //divido stringa in base a carattere '/'
-
-    printf("Token iniziale = %s\n", token);
-    //printf("Pathname attuale = %s\n", pathname);
-
-    if(strcmp(token, pathBackup) == 0){ //non ho '/' quindi ho un solo token
-        printf("Path senza / intermedi\n");
-        getcwd(absPath, len);
-        if(strlen(absPath) + strlen(pathBackup) + 2 < len){
-            strncat(absPath, "/", 1);
-            strncat(absPath, pathBackup, strlen(pathBackup));
-        }
-        return;
-    }
-
-    while(token != NULL){
-        printf("%s\n", token);
-        fileName = malloc(strlen(token) + 1);
-        strncpy(fileName, token, strlen(token));
-        //per ogni token cambio cwd nella cartella indicata dal token e mi salvo il precedente
-        if(chdir(token) == -1){
-            printf("Schianto\n");
-            break;
-        }
-        token = strtok(NULL, "/");
-        if(token != NULL)
-            free(fileName);
-    }
-    //una volta finito il ciclo metto in un buffer la cwd e ci appendo il nome del file(quello sarà il mio path assoluto)
-    getcwd(absPath, len);
-    if(strlen(absPath) + strlen(fileName) + 2 < len){
-        strncat(absPath, "/", 1);
-        strncat(absPath, fileName, strlen(fileName));
-    }
-
-    chdir(currWorkDir); //torno a cwd iniziale
+    //free(pf1);
+    //free(pf2);
+    //free(pf3);
+    //push(&coda, (void*)&f4);
 }
 
 int main(){
-    pthread_t t1, t2;
-    int N = 10;
-    char a[2], buf[PATH_MAX];
-    char input[1000] = "../../../Calcolo Numerico/../Basi di Dati/Dispensa_BD.pdf";
-    int len = 2;
+    MyFile f2;
+    memset(&f2, 0, sizeof(MyFile));
+    strcpy(f2.filePath, "Mamma.txt");
 
-    getAbsPathFromRelPath(input, buf, PATH_MAX);
-    printf("%s\n", buf);
+    coda = createQueue(&fileComparison, &filePrint, &freeFile);
+    insert();
+
+    printf("Stampo coda attuale:\n");
+    printQueue(coda);
+
+    deleteElement(&coda, (void*)&f2);
+
+    printf("Stampo coda modificata:\n");
+    printQueue(coda);
+
+    freeQueue(&coda);
+
+    //printf("Stampo la testa della coda: \n");
+    //coda.printFunct(coda.queue.head);
+    //printf("Stampo coda originale:\n");
+    //printQueue(coda2);
     return 0;
 
 

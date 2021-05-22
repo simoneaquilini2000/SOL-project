@@ -19,7 +19,7 @@ int comm_socket_descriptor; //descrittore del socket lato client
 
 extern ClientConfigInfo c; //struttura di configurazione del client
 
-extern int imConnected; //flag che mi dice se sono connesso con il server o meno
+static int imConnected = 0; //flag che mi dice se sono connesso con il server o meno
 
 int openConnection(const char* sockName, int msec, const struct timespec abstime){
 	int connected = 0;
@@ -48,6 +48,7 @@ int openConnection(const char* sockName, int msec, const struct timespec abstime
    				msleep(msec);
    				max_nsec -= (msec * pow(10, 6));
    			}else{
+				imConnected = 0;
    				printf("Errore fatale\n");
    				return -1;
    			}
@@ -55,11 +56,13 @@ int openConnection(const char* sockName, int msec, const struct timespec abstime
    	}
    	if(connected){
 		errno = 0;
+		imConnected = 1;
    		printf("Sono connesso al server\n");
    		return 0;
    	}
    	printf("Tempo scaduto\n");
    	errno = ETIMEDOUT;
+	imConnected = 0;
    	return -1;
 }
 
@@ -98,6 +101,7 @@ int closeConnection(const char* sockName){
 		}
 	}while(errno == EINTR);
 	errno = 0;
+	imConnected = 0;
 	//unlink(c.socketName);
 	return 0;
 }
@@ -154,6 +158,9 @@ int openFile(const char* pathname, int flags){
 			return -1;
 		case -3:
 			errno = EPERM; //non posso aprire un file già aperto
+			return -1;
+		case -4:
+			errno = ENOSPC; //l'operazione ha causato il fallimento dell'algoritmo di rimpiazzamento non posso liberare memoria in filecache
 			return -1;
 		default: break;
 	}
@@ -214,6 +221,7 @@ int readFile(const char* pathname, void** buf, size_t* size){
 
 	*size = buf_size;
 	*buf = malloc(sizeof(char) * (buf_size + 1));
+	memset(buf, 0, (buf_size + 1));
 	if(*buf == NULL){
 		return -1;
 	}
@@ -348,6 +356,9 @@ int writeFile(const char* pathname, const char* dirname){
 		case -4: 
 			errno = EIO; //non posso scrivere un file la cui dimensione è > del maxStorageSpace della fileCache
 			return -1;
+		case -5:
+			errno = ENOSPC; //algoritmo di rimpiazzamento ha fallito, è stato eseguito un rollback dell'operazione
+			return -1;
 		default: break;
 	}
 	errno = 0;
@@ -414,12 +425,28 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
 
 	//printf("Adesso ris = %d\n", ris);
 
+	switch(ris){
+		case -2:
+			errno = EACCES; //file da scrivere in append non è stato ancora aperto
+			return -1;
+			//break;
+		case -3:
+			errno = EPERM; //non posso appendere un file se la sua dimensione supererebbe il maxStorageSpace della fileCache
+			return -1; 
+			//break;
+		case -4: 
+
+			return -1;
+			//break;
+		case -5: 
+			return -1;
+		//break;
+		default: break;
+	}
 	if(ris == -2){
-		errno = EACCES; //file da scrivere in append non è stato ancora aperto
-		return -1;
+
 	}else if(ris == -3){
-		errno = EPERM; //non posso appendere un file se la sua dimensione supererebbe il maxStorageSpace della fileCache
-		return -1;
+
 	}
 	errno = 0;
 	//printf("SUCCESS\n");
