@@ -4,82 +4,83 @@
 #include<limits.h>
 #include<sys/types.h>
 #include<dirent.h>
+#include<pthread.h>
 #include "generic_queue.h"
 #include "file.h"
 #include<unistd.h>
 
-GenericQueue coda;
+int celleLibere = 10;
 
-void insert(){
-    MyFile f1, f2, f3;
-    memset(&f1, 0, sizeof(f1));
-    memset(&f2, 0, sizeof(f2));
-    memset(&f3, 0, sizeof(f3));
-    //memset(&f4, 0, sizeof(f4));
+int prodActive = 1;
 
-    strcpy(f1.filePath, "Babbo.txt");
-    strcpy(f2.filePath, "Mamma.txt");
-    strcpy(f3.filePath, "Davide.txt");
+pthread_mutex_t flagMux = PTHREAD_MUTEX_INITIALIZER;
 
-    MyFile *pf1 = malloc(sizeof(MyFile));
-    memset(pf1, 0, sizeof(MyFile));
-    memcpy(pf1, &f1, sizeof(MyFile));
+pthread_mutex_t mux = PTHREAD_MUTEX_INITIALIZER;
 
-    MyFile *pf2 = malloc(sizeof(MyFile));
-    memset(pf2, 0, sizeof(MyFile));
-    memcpy(pf2, &f2, sizeof(MyFile));
+pthread_cond_t varcondProd = PTHREAD_COND_INITIALIZER;
 
-    MyFile *pf3 = malloc(sizeof(MyFile));
-    memset(pf3, 0, sizeof(MyFile));
-    memcpy(pf3, &f3, sizeof(MyFile));
+pthread_cond_t varcondCons = PTHREAD_COND_INITIALIZER;
 
-    //strcpy(f4.filePath, "Simone.txt");
+static void* scrivi(){
+    while(1){
+        pthread_mutex_lock(&mux);
+        while(celleLibere == 0)
+            pthread_cond_wait(&varcondProd, &mux);
+        //pthread_mutex_lock(&flagMux);
+        if(prodActive == 0){
+            //pthread_mutex_unlock(&flagMux);
+            break;
+        }
+        //pthread_mutex_unlock(&flagMux);
+        celleLibere--;
+        //printf("CelleLibere = %d\n", celleLibere);
+        pthread_cond_signal(&varcondCons);
+        pthread_mutex_unlock(&mux);
+    }
+    printf("Sono worker esco!\n");
+    return NULL;
+}
 
-    push(&coda, (void*)pf1);
-    push(&coda, (void*)pf2);
-    push(&coda, (void*)pf3);
+static void* leggi(){
+    int letti = 0;
 
-    //free(pf1);
-    //free(pf2);
-    //free(pf3);
-    //push(&coda, (void*)&f4);
+    while(1){
+        pthread_mutex_lock(&mux);
+        while(celleLibere == 10)
+            pthread_cond_wait(&varcondCons, &mux);
+        celleLibere++;
+        //printf("CelleLibere = %d\n", celleLibere);
+        letti++;
+        pthread_cond_signal(&varcondProd);
+        pthread_mutex_unlock(&mux);
+        if(letti > 2)
+            break;
+    }
+    pthread_mutex_lock(&mux);
+    prodActive = 0;
+    pthread_mutex_unlock(&mux);
+    pthread_cond_broadcast(&varcondProd);
+
+    printf("Sono manager esco!\n");
+    return NULL;
 }
 
 int main(){
-    MyFile f2;
-    memset(&f2, 0, sizeof(MyFile));
-    strcpy(f2.filePath, "Mamma.txt");
+    pthread_t cons;
+    pthread_t prods[10];
 
-    coda = createQueue(&fileComparison, &filePrint, &freeFile);
-    insert();
+    pthread_create(&cons, NULL, &leggi, NULL);
 
-    printf("Stampo coda attuale:\n");
-    printQueue(coda);
+    for(int i = 0; i < 10; i++)
+        pthread_create(&prods[i], NULL, &scrivi, NULL);
 
-    deleteElement(&coda, (void*)&f2);
-
-    printf("Stampo coda modificata:\n");
-    printQueue(coda);
-
-    freeQueue(&coda);
-
-    //printf("Stampo la testa della coda: \n");
-    //coda.printFunct(coda.queue.head);
-    //printf("Stampo coda originale:\n");
-    //printQueue(coda2);
+    pthread_join(cons, NULL);
+    /*for(int i = 0; i < 10; i++){
+         pthread_cond_signal(&varcondProd);
+    }*/
+    for(int i = 0; i < 10; i++){
+        //pthread_cond_signal(&varcondProd);
+        pthread_join(prods[i], NULL);
+    }
     return 0;
-
-
-
-    /*printf("%d\n", (N>0));
-    printf("%d\n", (N<=0));
-
-    if(pipe(p) == -1)
-        exit(EXIT_FAILURE);
-
-    pthread_create(&t1, NULL, &scriviInPipe, (void*)&N);
-    pthread_create(&t2, NULL, &leggiDaPipe, NULL);
-
-    pthread_join(t1, NULL);
-    pthread_join(t2, NULL);*/
 }

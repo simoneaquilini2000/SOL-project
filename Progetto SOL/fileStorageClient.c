@@ -140,7 +140,7 @@ int main(int argc, char const *argv[]){
 	/*z = writeFile("fileDaLeggere.txt", NULL);
 	printf("%d %d\n", z, errno);*/
 	//srand(time(NULL));
-	//sleep((rand() % 10) + 3);
+	sleep(20);
 
 	int x = closeConnection(c.socketName);
 	printf("Esito terminazione connesione: %d\n", x);

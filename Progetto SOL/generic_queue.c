@@ -168,13 +168,13 @@ void printQueue(GenericQueue q){
 
 void freeQueue(GenericQueue *q){
 
-	GenericNode* corr = q->queue.head;
+	//GenericNode* corr = q->queue.head;
 	GenericNode* toDel;
 
-	while(corr != NULL){
+	while(q->queue.head != NULL){
 		//printf("Sto eliminando");
-		toDel = corr;
-		corr = corr->next;
+		toDel = q->queue.head;
+		q->queue.head = q->queue.head->next;
 		q->freeFunct(toDel->info);
 		free(toDel);
 		q->size--;

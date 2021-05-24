@@ -28,8 +28,8 @@ serverInfo startConfig(const char* sockPath){
 		while(buf[k] != '\n' && buf[k] != '\r') k++;
 
 		buf[k] = '\0';
-		printf("Cosa ho letto dal file: %s\n", buf);
-		printf("StrLen di buf = %d\n", strlen(buf));
+		//printf("Cosa ho letto dal file: %s\n", buf);
+		//printf("StrLen di buf = %d\n", strlen(buf));
 		params[i] = malloc(sizeof(char) * (strlen(buf) + 1));
 		//memset(params[i], 0, sizeof(char) * strlen(buf));
 		strncpy(params[i], buf, strlen(buf) + 1);
