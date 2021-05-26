@@ -102,15 +102,29 @@ static pthread_mutex_t pipeAccessMutex = PTHREAD_MUTEX_INITIALIZER;
 //lista di attesa dei workers che devono "restituire" il descrittore usato per la comunicazione al manager
 static pthread_cond_t pList = PTHREAD_COND_INITIALIZER;
 
-pthread_t manage_tid;
-pthread_t *workers;
+/*
+	Funzione che esegue la pulizia delle strutture usate(
+	coda delle richieste, dei descrittori e dei file).
+	Non ha bisogno della ME in quanto verrà eseguita solo
+	dopo che i workers, il manager ed il signal handler
+	thread saranno terminati
+*/
+void freeStructures(){
+	close(p[0]);
+	close(p[1]);
+	close(signalPipe[0]);
+	close(signalPipe[1]);
+	freeQueue(&requests);
+	freeQueue(&connections);
+	freeQueue(&fileCache);
+}
 
 /*
 	Funzione eseguita dal thread gestore dei segnali:
 		-Previo mascheramento di SIGINT,SIGHUP e SIGQUIT,
 		si mette in attesa di tali segnali con sigwait.
 		-Chiude in entrambi i casi il listen socket.
-		-Se riceve SIGHUP, ...
+		-Se riceve SIGHUP, 
 		-Se riceve SIGINT/SIGQUIT chiude la pipe
 		verso il manager, libera le code sopracitate,
 		stampa su stdout le statistiche del server ed esce
@@ -127,62 +141,14 @@ static void* signalHandlerActivity(void* args){
 	pthread_sigmask(SIG_SETMASK, &set, NULL);
 	sigwait(&set, &sig_num);
 
-	/*pthread_mutex_lock(&lSocketMutex);
-	close(lfd);
-	pthread_mutex_lock(&connectionsQueueMutex);
-	FD_CLR(lfd, &active_fds);
-	pthread_mutex_unlock(&connectionsQueueMutex);
-	pthread_mutex_unlock(&lSocketMutex);*/
-	printf("Signal Handler: Ho ricevuto segnale %d\n", sig_num);
-	if(sig_num == SIGHUP){
-		//printf("Signal handler: invio roba per gestire SIGHUP\n");
-		pthread_mutex_lock(&signalPipeMutex);
-		if((l = writen(signalPipe[1], &sig_num, sizeof(int))) == -1){
-			perror("Errore scrittura su pipe!\n");
-			exit(EXIT_FAILURE);
-		}
-		pthread_mutex_unlock(&signalPipeMutex);
-	}else{
-		//exit(EXIT_SUCCESS);
-		//printf("Faccio azioni di segnali SIGINT o SIGQUIT\n");
-		//pthread_mutex_lock(&flagAccessMutex);
-		//sigIntOrQuitFlag = 1;
-		//printf("Signal handler: invio roba per uscire\n");
-		pthread_mutex_lock(&signalPipeMutex);
-		if((l = writen(signalPipe[1], &sig_num, sizeof(int))) == -1){
-			perror("Errore scrittura su pipe!\n");
-			exit(EXIT_FAILURE);
-		}
-		pthread_mutex_unlock(&signalPipeMutex);
-		//pthread_mutex_unlock(&flagAccessMutex);
-		
-		pthread_mutex_lock(&pipeAccessMutex);
-		close(p[0]);
-		close(p[1]);
-		pthread_mutex_unlock(&pipeAccessMutex);
-		//printf("Ho ricevuto SIGINT o SIGQUIT quindi esco1\n");
-		pthread_mutex_lock(&requestsQueueMutex);
-		freeQueue(&requests);
-		pthread_mutex_unlock(&requestsQueueMutex);
-		//printf("Ho ricevuto SIGINT o SIGQUIT quindi esco2\n");
-		//stampa statistiche in ME
-		pthread_mutex_lock(&updateStatsMutex);
-		printServerStats(serverStatistics);
-		pthread_mutex_unlock(&updateStatsMutex);
-		pthread_mutex_lock(&fileCacheMutex);
-		printf("Stampo file rimasti nella cache:\n");
-		printQueue(fileCache);
-		freeQueue(&fileCache);
-		pthread_mutex_unlock(&fileCacheMutex);
-		//printf("Ho ricevuto SIGINT o SIGQUIT quindi esco3\n");
-		pthread_mutex_lock(&connectionsQueueMutex);
-		FD_ZERO(&active_fds);
-		freeQueue(&connections);
-		pthread_mutex_unlock(&connectionsQueueMutex);
-		//printf("Ho ricevuto SIGINT o SIGQUIT quindi esco4\n");
-		//exit(EXIT_SUCCESS);
-	}
+	//printf("Signal Handler: Ho ricevuto segnale %d\n", sig_num);
 
+	pthread_mutex_lock(&signalPipeMutex);
+		if((l = writen(signalPipe[1], &sig_num, sizeof(int))) == -1){
+			perror("Errore scrittura su pipe!\n");
+			exit(EXIT_FAILURE);
+		}
+	pthread_mutex_unlock(&signalPipeMutex);
 	printf("Signal Handler: ho terminato la mia attività\n");
 	return (void*)NULL;
 }
@@ -201,12 +167,6 @@ int updateActiveFds(fd_set set, int fd_num){
 		}
 	}
 	return max;
-}
-
-//da rivedere la scelta
-int executeCloseConnRequest(MyRequest r){
-	printf("Eseguo closeConn\n");
-	return 0;
 }
 
 /*
@@ -243,24 +203,24 @@ static void* managerThreadActivity(void* args){
 	pthread_mutex_lock(&connectionsQueueMutex);
 	FD_ZERO(&active_fds); //init del set dei descrittori attivi
 	FD_SET(lfd, &active_fds);
+	if(lfd > fd_num) fd_num = lfd; //fd_num terrà il massimo indice di descrittoreù
 	pthread_mutex_unlock(&connectionsQueueMutex);
-	if(lfd > fd_num) fd_num = lfd; //fd_num terrà il massimo indice di descrittore
 	pthread_mutex_unlock(&lSocketMutex);
 
 	pthread_mutex_lock(&pipeAccessMutex);
 	pthread_mutex_lock(&connectionsQueueMutex);
 	FD_SET(p[0], &active_fds); //ascolto pipe di comunicazione da worker(s) verso il manager
-	pthread_mutex_unlock(&connectionsQueueMutex);
 	if(p[0] > fd_num)
 		fd_num = p[0];
+	pthread_mutex_unlock(&connectionsQueueMutex);
 	pthread_mutex_unlock(&pipeAccessMutex);
 
 	pthread_mutex_lock(&signalPipeMutex);
 	pthread_mutex_lock(&connectionsQueueMutex);
 	FD_SET(signalPipe[0], &active_fds); //ascolto pipe di comunicazione da worker(s) verso il manager
-	pthread_mutex_unlock(&connectionsQueueMutex);
 	if(signalPipe[0] > fd_num)
 		fd_num = signalPipe[0];
+	pthread_mutex_unlock(&connectionsQueueMutex);
 	pthread_mutex_unlock(&signalPipeMutex);
 
 	printf("Socket aperto per ricevere connessioni\n");
@@ -272,7 +232,9 @@ static void* managerThreadActivity(void* args){
 			perror("Errore select!");
 			exit(EXIT_FAILURE);
 		}else{
+			//pthread_mutex_lock(&connectionsQueueMutex);
 			for(index = 0; index <= fd_num; index++){
+				//pthread_mutex_unlock(&connectionsQueueMutex);
 				if(FD_ISSET(index, &rdset)){ //se tale descrittore è pronto esaudisco la richiesta
 					if(index == lfd){ //listen socket pronto(l'accept non si blocca)
 						MyDescriptor *newConn = malloc(sizeof(MyDescriptor));
@@ -283,7 +245,7 @@ static void* managerThreadActivity(void* args){
 						if(newConn->cfd > fd_num) fd_num = newConn->cfd;
 						int pushRes = push(&connections, (void *) newConn);
 						pthread_mutex_unlock(&connectionsQueueMutex);
-						if(pushRes == -1){ //inserisco nuova connessione
+						if(pushRes == -1){ //se l'inserimento fallisce ho errore fatale
 							free(newConn);
 							perror("Errore inserimento nella coda di connessioni!");
 							exit(EXIT_FAILURE);
@@ -298,9 +260,10 @@ static void* managerThreadActivity(void* args){
 							}
 							pthread_mutex_lock(&connectionsQueueMutex);
 							FD_CLR(signalPipe[0], &active_fds);
+							fd_num = updateActiveFds(active_fds, fd_num + 1);
 							pthread_mutex_unlock(&connectionsQueueMutex);
 							pthread_mutex_unlock(&signalPipeMutex);
-							printf("Manager: Ho ricevuto segnale %d\n", sig_num);
+							//printf("Manager: Ho ricevuto segnale %d\n", sig_num);
 							if(sig_num == SIGINT || sig_num == SIGQUIT){
 								//pthread_mutex_lock(&flagAccessMutex);
 								active = 0;
@@ -311,13 +274,14 @@ static void* managerThreadActivity(void* args){
 								pthread_mutex_unlock(&requestsQueueMutex);
 								break;
 							}else if(sig_num == SIGHUP){
-								printf("Sono in ramo SIGHUP\n");
+								//printf("Sono in ramo SIGHUP\n");
 								pthread_mutex_lock(&connectionsQueueMutex);
 								sigHupFlag = 1;
 								close(lfd);
 								FD_CLR(lfd, &active_fds);
+								fd_num = updateActiveFds(active_fds, fd_num + 1);
 								if(isEmpty(connections) == 1){
-									printf("BA\n");
+									//printf("BA\n");
 									pthread_mutex_lock(&requestsQueueMutex);
 									sigIntOrQuitFlag = 1;
 									pthread_cond_broadcast(&waitingForRequestsList);
@@ -326,80 +290,82 @@ static void* managerThreadActivity(void* args){
 									active = 0;
 									break;
 								}
-								printf("BO\n");
+								//printf("BO\n");
 								pthread_mutex_unlock(&connectionsQueueMutex);
 							}
-						}
-						pthread_mutex_unlock(&signalPipeMutex);
-						pthread_mutex_lock(&pipeAccessMutex);
-						if(index == p[0]){ //leggo dalla pipe
-							if((l = readn(p[0], &descToAdd, sizeof(int))) == -1){
-								perror("Errore read da pipe!");
-								exit(EXIT_FAILURE);
-							}
-							celleLibere = 1; //abilito un worker in attesa a scrivere nella pipe
-							pthread_mutex_lock(&connectionsQueueMutex);
-							FD_SET(descToAdd, &active_fds); //riascolto il descrittore ricevuto dal worker
-							if(descToAdd > fd_num) 
-								fd_num = descToAdd;
-							pthread_mutex_unlock(&connectionsQueueMutex);
-							pthread_cond_signal(&pList);
-							pthread_mutex_unlock(&pipeAccessMutex);
 						}else{
-							pthread_mutex_unlock(&pipeAccessMutex);
-							memset(&toAdd, 0, sizeof(MyRequest)); //azzero struttura di ricezione richiesta
-							if((l = readn(index, &toAdd, sizeof(MyRequest))) == -1){//leggo richiesta
-								perror("Errore read!");
-								exit(EXIT_FAILURE);
-							}
-							if(l == 0){ //EOF sul descrittore di indice index
-								printf("Terminazione connesione\n");
-								//clearBuffer(buf, 1024);
-								close(index);
-								pthread_mutex_lock(&connectionsQueueMutex);
-								FD_CLR(index, &active_fds);
-								fd_num = updateActiveFds(active_fds, fd_num);
-								printf("Prima di terminare connessione:\n");
-								printQueue(connections);
-								MyDescriptor d;
-								d.cfd = index;
-								deleteElement(&connections, (void*) &d); //elimino descrittore corrispondente dalla coda di connessioni
-								printf("Dopo termine connessione:\n");
-								printQueue(connections);
-								//printf("BAB\n");
-								if(isEmpty(connections) && sigHupFlag == 1){ //c'è SIGHUP e ho terminato di servire tutte le connessioni
-									printf("BUB\n");
-									active = 0;
-									pthread_mutex_lock(&requestsQueueMutex);
-									sigIntOrQuitFlag = 1; //mi riconduco al caso di SIGINT in modo da terminare immediatamente
-									pthread_cond_broadcast(&waitingForRequestsList);
-									pthread_mutex_unlock(&requestsQueueMutex);
-									pthread_mutex_unlock(&connectionsQueueMutex);
-									break;
-								}
-								pthread_mutex_unlock(&connectionsQueueMutex);
-							}else{ //Inserisco in ME una nuova richiesta da soddisfare e la segnalo
-								toAdd.comm_socket = index;
-								pthread_mutex_lock(&connectionsQueueMutex);
-								FD_CLR(index, &active_fds); //sospendo l'ascolto del manager su tale descrittore finchè il worker non avrà finito il suo lavoro
-								fd_num = updateActiveFds(active_fds, fd_num);
-								pthread_mutex_unlock(&connectionsQueueMutex);
-								MyRequest *req = malloc(sizeof(MyRequest));
-								memset(req, 0, sizeof(MyRequest));
-								req = memcpy(req, &toAdd, sizeof(MyRequest)); //copio la richiesta letta all indirizzo di req
-								pthread_mutex_lock(&requestsQueueMutex);
-								if(push(&requests, (void *) req) == -1){
-									pthread_mutex_unlock(&requestsQueueMutex);
-									perror("Errore push!");
+							pthread_mutex_unlock(&signalPipeMutex);
+							pthread_mutex_lock(&pipeAccessMutex);
+							if(index == p[0]){ //leggo dalla pipe
+								if((l = readn(p[0], &descToAdd, sizeof(int))) == -1){
+									perror("Errore read da pipe!");
 									exit(EXIT_FAILURE);
 								}
-								pthread_cond_signal(&waitingForRequestsList);
-								pthread_mutex_unlock(&requestsQueueMutex);
+								celleLibere = 1; //abilito un worker in attesa a scrivere nella pipe
+								pthread_mutex_lock(&connectionsQueueMutex);
+								FD_SET(descToAdd, &active_fds); //riascolto il descrittore ricevuto dal worker
+								if(descToAdd > fd_num) 
+									fd_num = descToAdd;
+								pthread_mutex_unlock(&connectionsQueueMutex);
+								pthread_cond_signal(&pList);
+								pthread_mutex_unlock(&pipeAccessMutex);
+							}else{
+								pthread_mutex_unlock(&pipeAccessMutex);
+								memset(&toAdd, 0, sizeof(MyRequest)); //azzero struttura di ricezione richiesta
+								if((l = readn(index, &toAdd, sizeof(MyRequest))) == -1){//leggo richiesta
+									perror("Errore read!");
+									exit(EXIT_FAILURE);
+								}
+								if(l == 0){ //EOF sul descrittore di indice index
+									//clearBuffer(buf, 1024);
+									close(index);
+									pthread_mutex_lock(&connectionsQueueMutex);
+									FD_CLR(index, &active_fds);
+									fd_num = updateActiveFds(active_fds, fd_num + 1);
+									//printf("Prima di terminare connessione:\n");
+									//printQueue(connections);
+									MyDescriptor d;
+									d.cfd = index;
+									deleteElement(&connections, (void*) &d); //elimino descrittore corrispondente dalla coda di connessioni
+									//printf("Dopo termine connessione:\n");
+									//printQueue(connections);
+									//printf("BAB\n");
+									if(isEmpty(connections) && sigHupFlag == 1){ //c'è SIGHUP e ho terminato di servire tutte le connessioni
+										//printf("BUB\n");
+										active = 0;
+										pthread_mutex_lock(&requestsQueueMutex);
+										sigIntOrQuitFlag = 1; //mi riconduco al caso di SIGINT in modo da terminare immediatamente
+										pthread_cond_broadcast(&waitingForRequestsList);
+										pthread_mutex_unlock(&requestsQueueMutex);
+										pthread_mutex_unlock(&connectionsQueueMutex);
+										break;
+									}
+									pthread_mutex_unlock(&connectionsQueueMutex);
+								}else{ //Inserisco in ME una nuova richiesta da soddisfare e la segnalo
+									toAdd.comm_socket = index;
+									pthread_mutex_lock(&connectionsQueueMutex);
+									FD_CLR(index, &active_fds); //sospendo l'ascolto del manager su tale descrittore finchè il worker non avrà finito il suo lavoro
+									fd_num = updateActiveFds(active_fds, fd_num + 1);
+									pthread_mutex_unlock(&connectionsQueueMutex);
+									MyRequest *req = malloc(sizeof(MyRequest));
+									memset(req, 0, sizeof(MyRequest));
+									req = memcpy(req, &toAdd, sizeof(MyRequest)); //copio la richiesta letta all indirizzo di req
+									pthread_mutex_lock(&requestsQueueMutex);
+									if(push(&requests, (void *) req) == -1){
+										pthread_mutex_unlock(&requestsQueueMutex);
+										perror("Errore push!");
+										exit(EXIT_FAILURE);
+									}
+									pthread_cond_signal(&waitingForRequestsList);
+									pthread_mutex_unlock(&requestsQueueMutex);
+								}
 							}
 						}
 					}
 				}
+				//pthread_mutex_lock(&connectionsQueueMutex);
 			}
+			//pthread_mutex_unlock(&connectionsQueueMutex);
 		}
 	}
 	printf("Sono manager ho finito la mia attività\n");
@@ -529,8 +495,6 @@ int replacingAlgorithm(){
 	serverStatistics.replaceAlgInvokeTimes++;
 	pthread_mutex_unlock(&updateStatsMutex);
 
-	printf("Invoco algoritmo di rimpiazzamento\n");
-
 	/*
 		finchè head != NULL && (size > maxSize || storageSize > maxStorageSize):
 			- pop di file, se questo è stato modificato
@@ -560,14 +524,7 @@ int replacingAlgorithm(){
 			serverStatistics.fileCacheActStorageSize -= toDel->dim;
 			replaceCondition = (serverStatistics.fileCacheActStorageSize > s.maxStorageSpace || actQueueSize - 1 > s.nMaxFile);
 			pthread_mutex_unlock(&updateStatsMutex);
-			//pthread_mutex_lock(&fileCacheMutex);
-			//printf("Stato cache attuale:\n");
-			//printQueue(fileCache);
-			//printf("FINE STAMPA CACHE\n");
 			deleteElement(&fileCache, (void*) toDel);
-			//printf("Stato cache modificata:\n");
-			//printQueue(fileCache);
-			printf("FINE MODIFICA CACHE \n");
 			actQueueSize = fileCache.size ;
 			//pthread_mutex_unlock(&fileCacheMutex);
 		}
@@ -1166,10 +1123,6 @@ static void executeRequest(MyRequest r){
 			if(executeWriteFile(r) == -1)
 				perror("Errore esecuzione richiesta WRITE_FILE");
 			break;
-		case CLOSE_CONN:
-			if(executeCloseConnRequest(r) == -1)
-				perror("Errore esecuzione richiesta CLOSE_CONN");
-			break;
 		default: return;	
 	}
 }
@@ -1210,34 +1163,27 @@ static void* workerThreadActivity(void* args){
 				break;
 			}
 		}
-		//pthread_mutex_lock(&flagAccessMutex);
+		//controllo se mi è arrivato sigInt o se le connessioni sono finite(se è arrivato sigHup in precedenza) se si break;
 		if(sigIntOrQuitFlag == 1){
-			//printf("Esco dal ciclo while(1)\n");
-			//pthread_mutex_unlock(&flagAccessMutex);
 			pthread_mutex_unlock(&requestsQueueMutex);
 			break;
 		}
-		//pthread_mutex_unlock(&flagAccessMutex);
-		//controllo se mi è arrivato sigInt o se le connessioni sono finite(se è arrivato sigHup in precedenza) se si break;
-		printf("Estraggo richiesta\n");
 		p = (MyRequest*) pop(&requests); //sono sicuro che p != NULL
 		pthread_mutex_unlock(&requestsQueueMutex);
 		executeRequest(*p);
 		commSocketGiveBack(p->comm_socket);
-		//memset(p, 0, sizeof(p));
-		//printf("Eseguo free della richiesta\n");
 		freeRequest(p);
-		printf("fine POP\n");
 	}
 	printf("Sono worker ho finito la mia attività\n");
 	return (void*)NULL;
 }
 
 int main(int argc, char const *argv[]){
+	pthread_t manage_tid;
+	pthread_t *workers;
+	pthread_t s_handler;
 	int i;
 	sigset_t mask; //maschera dei segnali
-
-	pthread_t s_handler;
 
 	if(argc < 2){
 		perror("Path del file di configurazione deve essere passato da linea di comando!");
@@ -1294,6 +1240,18 @@ int main(int argc, char const *argv[]){
 	for(i = 0; i < s.nWorkers; i++)
 			pthread_join(workers[i], NULL);
 	pthread_join(manage_tid, NULL);
-	free(workers);
+	/*
+		Con questa condizione includo anche il caso in cui termino
+		in seguito all'arrivo di SIGHUP, in quanto si riconduce
+		ad un caso di SIGINT posticipato al momento in cui
+		non si hanno più client connessi	
+	*/
+	if(sigIntOrQuitFlag == 1){
+		printServerStats(serverStatistics);
+		printf("Stampo file rimasti nella cache:\n");
+		printQueue(fileCache);
+	}
+	freeStructures(); //libero le strutture usate
+	free(workers); //libero puntatore di workers
 	return 0;
 }

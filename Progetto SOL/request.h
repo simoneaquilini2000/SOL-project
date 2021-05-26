@@ -12,8 +12,7 @@ typedef enum e{
 	REMOVE_FILE, //richiesta di rimozione di un file
 	APPEND_FILE, //richiesta di scrittura in append di un file
 	WRITE_FILE, //richiesta di scrittura di un file
-	READ_N_FILE, //richiesta di lettura di N file
-	CLOSE_CONN //richiesta di fine connessione(da implementare)
+	READ_N_FILE //richiesta di lettura di N file
 }RequestType; 
 
 typedef struct r{

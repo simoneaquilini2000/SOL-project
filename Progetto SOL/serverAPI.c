@@ -77,25 +77,6 @@ int closeConnection(const char* sockName){
 		return -1;
 	}
 
-	MyRequest r;
-	int l, ris;
-
-	memset(&r, 0, sizeof(MyRequest));
-	r.type = CLOSE_CONN;
-	r.timestamp = time(NULL);
-
-	//da rivedere
-	if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){
-		errno = EAGAIN;
-		return -1;
-	}
-
-	/*
-	if((l = readn(comm_socket_descriptor, &ris, sizeof(int))) == -1){
-		errno = EAGAIN;
-		return -1;
-	}*/
-
 	do{
 		//printf("Sto chiudendo connessione\n");
 		int closeRes = close(comm_socket_descriptor);
@@ -245,7 +226,7 @@ int readFile(const char* pathname, void** buf, size_t* size){
 int readNFiles(int N, const char* dirname){
 	MyRequest r;
 	MyFile toSave;
-	int l, finished, counter = 0;
+	int l, finished, counter = 0, readBytes = 0;
 
 	memset(&r, 0, sizeof(MyRequest));
 	r.flags = 0;
@@ -288,6 +269,7 @@ int readNFiles(int N, const char* dirname){
 
 		free(toSave.content);
 		counter++;
+		readBytes += toSave.dim;
 
 		if((l = readn(comm_socket_descriptor, &finished, sizeof(int))) == -1){
 			errno = EAGAIN;
@@ -295,6 +277,8 @@ int readNFiles(int N, const char* dirname){
 		}
 	}
 	errno = 0;
+	if(c.printEnable == 1)
+		printf("In totale ho letto %d bytes\n", readBytes);
 	return counter;
 }
 
@@ -317,7 +301,6 @@ int writeFile(const char* pathname, const char* dirname){
 	}
 	//setup richiesta
 	fileContentDim = strlen(fileContent);
-	printf("Lunghezza contenuto del file da scrivere = %d\n", fileContentDim);
 	realpath(pathname, absPath); //sicuro che absPath non è vuoto in quanto ris != NULL
 	r.type = WRITE_FILE;
 	r.timestamp = time(NULL);
@@ -369,6 +352,8 @@ int writeFile(const char* pathname, const char* dirname){
 		default: break;
 	}
 	errno = 0;
+	if(c.printEnable == 1)
+		printf("Ho scritto nel file storage %d bytes\n", fileContentDim);
 	return 0;
 }
 
@@ -447,7 +432,8 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
 		default: break;
 	}
 	errno = 0;
-	//printf("SUCCESS\n");
+	if(c.printEnable == 1)
+		printf("Ho scritto nel file storage server %d bytes\n", size);
 	return 0;
 }
 

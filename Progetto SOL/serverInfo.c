@@ -2,6 +2,7 @@
 #include<stdlib.h>
 #include<unistd.h>
 #include<string.h>
+#include<math.h>
 #include<errno.h>
 #include "utility.h"
 #include "serverInfo.h"
@@ -76,8 +77,10 @@ void printConfig(serverInfo s){
 }
 
 void printServerStats(serverStats s){
+	double maxSpaceReached = s.fileCacheMaxStorageSize /((1.00) * pow(10, 6));
     printf("Stampo statistiche del file storage:\n");
-    printf("\tMassima dimensione (in byte) raggiunta dalla file cache: %d\n", s.fileCacheMaxStorageSize);
+    //printf("\tMassima dimensione (in byte) raggiunta dalla file cache: %d\n", s.fileCacheMaxStorageSize);
+	printf("\tMassima dimensione (in MB) raggiunta dalla file cache: %.6f\n", maxSpaceReached);
     printf("\tMassima quantita di file memorizzata: %d\n", s.fileCacheMaxSize);
     printf("\tNumero di volte in cui ho invocato l'algoritmo di rimpiazzamento: %d\n\n", s.replaceAlgInvokeTimes);
 }
