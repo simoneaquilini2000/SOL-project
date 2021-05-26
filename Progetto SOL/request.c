@@ -25,6 +25,10 @@ int requestComparison(void* r1, void *r2){
 	MyRequest req1 = *(MyRequest*)r1;
 	MyRequest req2 = *(MyRequest*)r2;
 
+	/*
+	 	confronto descrittore su cui avviene la comunicazione,
+		il tipo di richiesta ed il timestamp
+	*/
 	if(req1.comm_socket == req2.comm_socket && req1.type == req2.type && \
 		difftime(req1.timestamp, req2.timestamp) == 0)
 		return 1;
@@ -33,7 +37,7 @@ int requestComparison(void* r1, void *r2){
 
 void requestPrint(void* c){
 	if(c == NULL)
-		printf("BOB\n");
+		return;
 	MyRequest d = *(MyRequest*)c;
 	char buff[20];
 
@@ -42,7 +46,7 @@ void requestPrint(void* c){
 
 	printf("Communication descriptor: %d\n", d.comm_socket);
 	printf("Request Dimension: %d\n", d.request_dim);
-	//printf("Request content: %s\n", d.request_content);
+	printf("Request content: %s\n", d.request_content);
 	printf("Request send timestamp: %s\n", buff);
 	printf("Type = %d\n\n", d.type);
 }

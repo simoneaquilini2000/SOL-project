@@ -11,7 +11,7 @@ typedef struct s{
 	int nMaxFile; //massimo numero di file memorizzabili
 	int nWorkers; //numero di thread workers
 	char socketPath[1024]; //path del socket
-	char logFilePath[1024]; //path del file di log
+	char logFilePath[1024]; //path del file di log(non implementato)
 }serverInfo;
 
 typedef struct stats{
@@ -24,7 +24,7 @@ typedef struct stats{
 
 /*
 	Parsa il file di configurazione e restituisce
-	una struttura contenente tutte le info parsate
+	una struttura contenente tutte le info ottenute
 */
 serverInfo startConfig(const char*);
 

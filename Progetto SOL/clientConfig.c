@@ -52,7 +52,7 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, const char* argv[]){
 
 
 	conf.printEnable = 0;
-	optind = 1;
+	optind = 1; //resetto l'indice di getopt in modo da poter scandire le opzioni più volte
 
 	while((o = getopt(argc, argv, ALL_OPTIONS)) != -1){
 		//printf("Opzione: %c\n", o);
@@ -80,13 +80,13 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, const char* argv[]){
 					  }
 					  conf.printEnable = 1;
 					  break;
-			case 'd': if(foundD)
+			case 'd': if(foundD) //se ho più volte l'opzione -d prendo solo l'ultima occorrenza
 						clearBuffer(conf.saveReadFileDir, strlen(conf.saveReadFileDir));
 					  foundD = 1;
 					  strcpy(conf.saveReadFileDir, optarg);
 					  //myStrNCpy(conf.saveReadFileDir, optarg, strlen(optarg));
 					  break;
-			case 'R': foundR = 1;
+			case 'R': foundR = 1; //cercare qua -r e -R servono solo per verificare la correttezza della richiesta
 					  break;
 			case 'r': foundr = 1;
 					  break;
@@ -102,18 +102,17 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, const char* argv[]){
 	if(foundD == 0)
 		clearBuffer(conf.saveReadFileDir, 1024);
 	else{
-		if(foundR == 0 && foundr == 0){
+		if(foundR == 0 && foundr == 0){ //c'è l'opzione -d ma non c'è né -r né -R -> ERRORE
 			perror("Option -d must be used with option -r or -R\n");
 			exit(EXIT_FAILURE);
 		}
 	}
-	if(foundF == 0){
+	if(foundF == 0){ //necessario il nome del socket
 		perror("Required socket name\n");
 		exit(EXIT_FAILURE);
 	}
 	return conf;
 }
-
 
 void printConfigInfo(ClientConfigInfo c){
 	printf("Config parameters:\n");
@@ -136,11 +135,11 @@ int buildInsertRequest(int type, char *arg){
 		//fileToFind = getFileNameFromPath(token);
 		filePath = realpath(token, buf); //ottengo path assoluto dato quello relativo
 		if(filePath == NULL && type == WRITE_FILE){
-			printf("Non ho trovato file %s\n", token);
+			printf("Non ho trovato file %s\n", token);//errore nella richiesta che non verrà quindi spedita al server
 		}else{
-			if(type != WRITE_FILE)
+			if(type != WRITE_FILE) //se non devo mandare WRITE_FILE non necessariamente il file su cui opero deve stare sul mio FS
 				strncpy(r->request_content, token, strlen(token));
-			else
+			else //invio richiesta WRITE_FILE con un path assoluto come target
 				strncpy(r->request_content, buf, strlen(buf));
 			if(push(&toSendRequestQueue, (void*)r) == -1){
 				perror("errore push!");
@@ -162,7 +161,7 @@ int buildReadNRequest(int type, char *arg){
 	if(arg == NULL){
 		ris = 0;
 		char toSend[10];
-		sprintf(toSend, "%d", ris);
+		sprintf(toSend, "%d", ris); //senza argomento la richiesta si trasforma in -R 0
 		toSend[strlen(toSend)] = '\0';
 		printf("Argomento non specificato quindi inserisco %s\n", toSend);
 		strncpy(toAdd->request_content, toSend, strlen(toSend));
@@ -187,7 +186,7 @@ int buildReadNRequest(int type, char *arg){
 }
 
 int navigateFileSystem(char *rootPath, int n, int flag){
-	if(flag && n <= 0)
+	if(flag && n <= 0) //flag usato per indicare se c'è una quantità massima di file da leggere
 		return 0;
 
 	DIR *currentDir;
@@ -223,6 +222,7 @@ int navigateFileSystem(char *rootPath, int n, int flag){
 					r->type = WRITE_FILE;
 					//printf("Inserisco richiesta WRITE_FILE per il file %s\n", actFile->d_name);
 					if(realpath(actFile->d_name, buf) != NULL){
+						//per costruire richiesta ottengo path assoluto dei file
 						strncpy(r->request_content, buf, strlen(buf));
 						if(push(&toSendRequestQueue, (void*)r) == -1){
 							perror("Errore push!\n");
@@ -243,20 +243,20 @@ int navigateFileSystem(char *rootPath, int n, int flag){
 }
 
 int buildMultipleWriteRequest(int type, char* arg){
-	char *dir = strtok(arg, ",");
+	char *dir = strtok(arg, ","); //ottengo cartella da cui partire per manadare richieste di WRITE_FILE
 	char buf[PATH_MAX];
 
-	//printf("Inizio -w\n");
+	//Gestisco l'opzione -w
 
 	if(realpath(dir, buf) == NULL){
 		printf("La cartella specificata non esiste\n");
 		return -1;
 	}
 
-	char *sFile = strtok(NULL, ",");
+	char *sFile = strtok(NULL, ","); //ottengo eventuale n parametro aggiuntivo
 	int n, flag;
 
-	if(sFile == NULL){
+	if(sFile == NULL){ //se n non è specificato, non ho limite sul numero di file da leggere
 		n = 0;
 		flag = 0;
 	}else{
@@ -267,7 +267,7 @@ int buildMultipleWriteRequest(int type, char* arg){
 			flag = 1;
 	}
 
-	int writtenRequests = navigateFileSystem(buf, n, flag);
+	int writtenRequests = navigateFileSystem(buf, n, flag); //navigo FS ed inserisco le richieste
 	if(flag && writtenRequests != n)
 		return -1;
 	else if(flag && writtenRequests == n)

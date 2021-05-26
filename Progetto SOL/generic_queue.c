@@ -11,7 +11,7 @@ int defaultComparison(void* a, void* b){
 	int valA = *(int*) a;
 	int valB = *(int*) b;
 
-	return (valA == valB);
+	return (valA == valB); //interpreto i dati come degli interi
 }
 
 void defaultFreeFunct(void* c){
@@ -50,7 +50,7 @@ static GenericNode* createNode(void *ptr){
 	memset(x, 0, sizeof(GenericNode));
 	if(x == NULL)
 		return NULL;
-	x->info = ptr;
+	x->info = ptr; //assegno il puntatore alla struttura al campo info del nodo
 	x->next = NULL;
 
 	return x;
@@ -58,7 +58,8 @@ static GenericNode* createNode(void *ptr){
 
 int push(GenericQueue *q, void *ptr){
 	GenericNode *toAdd = createNode(ptr);
-	if(toAdd == NULL)
+	//se la malloc fallisce la memoria potrebbe non essere più consistente -> ERRORE FATALE
+	if(toAdd == NULL) 
 		return -1;
 
 	if(q->queue.head == NULL){
@@ -73,7 +74,7 @@ int push(GenericQueue *q, void *ptr){
 }
 
 void* pop(GenericQueue *q){
-	if(isEmpty(*q) == 1){
+	if(isEmpty(*q) == 1){ //se la coda è vuota la pop restituisce NULL
 		printf("Ciao\n");
 		return NULL;
 	}
@@ -109,8 +110,8 @@ void deleteElement(GenericQueue *q, void *ptr){
 			if(prec == NULL){
 				toDel = q->queue.head;
 				q->queue.head = q->queue.head->next;
-				q->freeFunct(toDel->info);
-				free(toDel);
+				q->freeFunct(toDel->info); //libero la struttura
+				free(toDel); //libero il nodo
 				corr = q->queue.head;
 			}else{
 				if(corr == q->queue.tail){

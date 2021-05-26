@@ -15,7 +15,7 @@ int fileComparison(void* f1, void *f2){
 	MyFile a = *(MyFile*) f1;
 	MyFile b = *(MyFile*) f2;
 
-	if(strcmp(a.filePath, b.filePath) == 0)
+	if(strcmp(a.filePath, b.filePath) == 0) //ogni file è identificato tramite il path assoluto
 		return 1;
 	return 0;
 }
@@ -60,6 +60,10 @@ char* getFileNameFromPath(char path[]){
 	char *token = strtok(path, "/");
 	char *ris;
 
+	/*
+		Tokenizzo la stringa fino ad arrivare all'ultimo token
+		che mi rappresenterà il nome del file su cui opero
+	*/
 	while(token != NULL){
 		ris = malloc(strlen(token) + 1);
 		memset(ris, 0, strlen(token));
@@ -76,7 +80,8 @@ int saveFile(MyFile f, const char dirname[]){
 	char previousCwd[1024];
 	char absPath[PATH_MAX];
 	int l;
-	char *ris = realpath(dirname, absPath);
+	char *ris = realpath(dirname, absPath); 
+	//la cartella deve già esistere, altrimenti realpath tornerà NULL
 
 	getcwd(previousCwd, 1024);
 
@@ -121,7 +126,7 @@ char* readFileContent(const char *pathname, char **fileContent){
 	char recBuf[1024];
 	char *ris = realpath(pathname, absPath);
 
-	//printf("Leggo file: %s\n", absPath);
+	//Leggo il contenuto del file(che si trova in absPath) e modifico fileContent
 
 	if(ris == NULL) //ris == NULL significa che pathname non è stato trovato
 		return NULL;
@@ -155,6 +160,7 @@ char* readFileContent(const char *pathname, char **fileContent){
 	return *fileContent;
 }
 
+//traduzione da path relativo ad assoluto
 void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
     if(pathname == NULL || strcmp(pathname, "") == 0)
         return;
@@ -174,8 +180,6 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
     char *token = strtok(pathname, "/");
     char *fileName;
     //divido stringa in base a carattere '/'
-	
-    //printf("Pathname attuale = %s\n", pathname);
 
     if(strcmp(token, pathBackup) == 0){ //non ho '/' quindi ho un solo token
         getcwd(absPath, len);

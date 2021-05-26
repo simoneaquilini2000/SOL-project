@@ -5,7 +5,8 @@
 
 typedef struct i{
 	//int client_pid; //PID del client che ha effettuato la connessione
-	int cfd; //descrittore dove avviene lo scambio di dati
+	int cfd; //descrittore dove avviene lo scambio di dati(lato server, cioè il
+			// descrittore restituito dalla accept)
 }MyDescriptor;
 
 

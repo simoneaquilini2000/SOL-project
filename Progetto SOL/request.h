@@ -22,7 +22,7 @@ typedef struct r{
 	time_t timestamp; //orario di invio della richiesta
 	char request_content[PATH_MAX]; //contenuto della richiesta(argomenti su cui opera)
 	RequestType type; //tipo di richiesta
-	int flags; //flag opzionali
+	int flags; //flag opzionali(O_CREAT o 0 per la OPEN_FILE)
 }MyRequest;
 
 //restituisce una richiesta

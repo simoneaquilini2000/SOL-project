@@ -15,7 +15,7 @@
 #include "clientConfig.h"
 #include "utility.h"
 
-int comm_socket_descriptor; //descrittore del socket lato client
+static int comm_socket_descriptor; //descrittore del socket lato client
 
 extern ClientConfigInfo c; //struttura di configurazione del client
 
@@ -39,18 +39,18 @@ int openConnection(const char* sockName, int msec, const struct timespec abstime
    	sa.sun_family = AF_UNIX;
    	strncpy(sa.sun_path, sockName, sizeof(sa.sun_path) - 1);
    	comm_socket_descriptor = socket(AF_UNIX, SOCK_STREAM, 0);
-   	while(!connected && max_nsec > 0){
+   	while(!connected && max_nsec > 0){ //finchè non sono connesso oppure non è scaduto il tempo
    		if(connect(comm_socket_descriptor, (struct sockaddr*)&sa, sizeof(sa)) != -1)
    			connected = 1;
    		else{
-   			printf("Errore in connesione di codice: %d\n", errno);
+   			//printf("Errore in connesione di codice: %d\n", errno);
    			if(errno == ENOENT || errno == ECONNREFUSED){
    				msleep(msec);
    				max_nsec -= (msec * pow(10, 6));
    			}else{
 				imConnected = 0;
-   				printf("Errore fatale\n");
-   				return -1;
+   				perror("Errore fatale\n");
+   				exit(EXIT_FAILURE);
    			}
    		}
    	}
@@ -84,24 +84,31 @@ int closeConnection(const char* sockName){
 	r.type = CLOSE_CONN;
 	r.timestamp = time(NULL);
 
-	/*if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){
+	//da rivedere
+	if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){
 		errno = EAGAIN;
 		return -1;
 	}
 
+	/*
 	if((l = readn(comm_socket_descriptor, &ris, sizeof(int))) == -1){
 		errno = EAGAIN;
 		return -1;
 	}*/
 
 	do{
-		if(close(comm_socket_descriptor) == -1 && errno != EINTR){
+		//printf("Sto chiudendo connessione\n");
+		int closeRes = close(comm_socket_descriptor);
+		printf("Close result: %d\n", closeRes);
+		if(closeRes == -1 && errno != EINTR){
+			printf("MUOIO\n");
 			errno = EBADR; //descrittore richiesto non valido
 			return -1;
 		}
 	}while(errno == EINTR);
 	errno = 0;
 	imConnected = 0;
+	//printf("Disconnesso\n");
 	//unlink(c.socketName);
 	return 0;
 }
@@ -357,7 +364,7 @@ int writeFile(const char* pathname, const char* dirname){
 			errno = EIO; //non posso scrivere un file la cui dimensione è > del maxStorageSpace della fileCache
 			return -1;
 		case -5:
-			errno = ENOSPC; //algoritmo di rimpiazzamento ha fallito, è stato eseguito un rollback dell'operazione
+			errno = ENOSPC; //scrittura non effettuata in quanto causerebbe il fallimento dell'algoritmo di rimpiazzamento
 			return -1;
 		default: break;
 	}
@@ -435,18 +442,9 @@ int appendToFile(const char* pathname, void* buf, size_t size, const char* dirna
 			return -1; 
 			//break;
 		case -4: 
-
+			errno = ENOSPC; //non permetto l'operazione in quanto causerebbe il fallimento dell'algoritmo di rimpiazzamento
 			return -1;
-			//break;
-		case -5: 
-			return -1;
-		//break;
 		default: break;
-	}
-	if(ris == -2){
-
-	}else if(ris == -3){
-
 	}
 	errno = 0;
 	//printf("SUCCESS\n");

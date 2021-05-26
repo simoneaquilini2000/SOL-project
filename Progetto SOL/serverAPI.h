@@ -7,9 +7,10 @@
 	Apre il socket per comunicare con il server e se riesce a connettersi
 	prima che sia passato un certo limite temporale(specificato nel 3° parametro)
 	ritorna 0.
-	Incaso di errore ritorna -1 e setta errno:
+	In caso di errore ritorna -1 e setta errno:
 		errno = ETIMEDOUT -> tempo scaduto per la connesione
 		errno = EINVAL -> nome del socket da aprire diverso da quello specificato in configurazione
+		errno = EPERM -> sono già connesso al server, non posso connettermi una seconda volta
 */
 int openConnection(const char*, int, const struct timespec);
 
@@ -18,19 +19,24 @@ int openConnection(const char*, int, const struct timespec);
 	ritorna 0 in caso di successo, -1 in caso di errore e setta errno:
 		errno = EBADR -> la close ha fallito non a causa di una interruzione
 		errno = EINVAL -> nome del socket da chiudere diverso da quello specificato in configurazione
+		errno = EPERM -> non posso disconnettermi dal server se non mi ci ero precendentemente connesso
 */
 int closeConnection(const char*);
 
 /*
 	Costruisce richiesta di apertura di un file e la spedisce al server.
-	Primo parametro = file su cui operare; Secondo parametro = 0 oppure O_CREATE
+	Primo parametro = file su cui operare; Secondo parametro = 0 oppure O_CREAT(vedi fcntl.h)
 
 	Ritorna 0 in caso di successo, -1 in caso di errore e setta errno:
 		errno = EAGAIN -> errore nella read o write della richiesta o risposta
-		errno = EEXIST -> O_CREATE è specificato, ma il file su cui operare è già presente in cache
-		errno = ENOENT -> O_CREATE non specificato ed il file su cui operare non è presente in cache
+		errno = EEXIST -> O_CREAT è specificato, ma il file su cui operare è già presente in cache
+		errno = ENOENT -> O_CREAT non specificato ed il file su cui operare non è presente in cache
 		errno = EINVAL -> flag diverso sia da 0 che da O_CREAT
 		errno = EPERM -> file da aprire è già aperto
+		errno = ENOSPC -> l'operazione non è stata effettuata perchè la sua esecuzione causerebbe
+						  il fallimento dell'algoritmo di rimpiazzamento, in quanto c'è il bisogno
+						  (in seguito all'operazione richiesta) di rimpiazzare file, ma non ce n'è
+						  l'effettiva possibilità
 */
 int openFile(const char*, int);
 
@@ -52,7 +58,7 @@ int readFile(const char*, void**, size_t*);
 	parametro(se != NULL).Ritorna il numero di file letti con successo,
 	-1 altrimenti e setta errno:
 		errno = EAGAIN -> errore di read/write
-		errno = EIO -> cartella dove salvare i file inesistente
+		errno = EIO -> cartella dove salvare i file inesistente od errore durante il salvataggio del file
 */
 int readNFiles(int, const char*);
 
@@ -63,6 +69,8 @@ int readNFiles(int, const char*);
 		errno = EAGAIN -> errore di read/write
 		errno = EACCES -> file non aperto
 		errno = EPERM -> prima devi eseguire con successo openFile(pathName, O_CREAT)
+		errno = ENOSPC -> scrittura non effettuata in quanto causerebbe
+						  il fallimento dell'algoritmo di rimpiazzamento
 */
 int writeFile(const char*, const char*);
 
@@ -73,6 +81,10 @@ int writeFile(const char*, const char*);
 		errno = EAGAIN -> errore read/write
 		errno = EACCES -> file da appendere non aperto
 		errno = ENOENT -> file specificato non presente in cache
+		errno = EPERM -> non posso estendere un file se la sua dimensione superasse 
+						il maxStorageSpace della cache
+		errno = ENOSPC -> operazione non eseguita in quanto la sua esecuzione
+						  comporterebbe il fallimento dell'algoritmo di rimpiazzamento 
 */
 int appendToFile(const char*, void*, size_t, const char*);
 
@@ -86,7 +98,7 @@ int appendToFile(const char*, void*, size_t, const char*);
 int closeFile(const char*);
 
 /*
-	Rimuove il file passato come parametro.
+	Rimuove il file passato come parametro, se questo è in stato di locked
 	Ritorna 0 in caso di successo, -1 e setta errno altrimenti:
 		errno = EAGAIN -> errori in read/write
 		errno = ENOENT -> file da rimuovere non presente nel server

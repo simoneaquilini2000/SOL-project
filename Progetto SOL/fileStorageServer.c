@@ -4,13 +4,18 @@
 		SIGINT/SIGQUIT -> avrò flag corrispondente e quando questo diventa 1,
 		signal_broadcast per svegliare i workers(che controlleranno tale condizione e
 		nel caso terminano) e pipe, ascoltata dal manager, che se vi legge
-		tale segnale termina il manager e fa la free delle strutture
+		tale segnale termina il manager e fa la free delle strutture = FATTO
 
 		SIGHUP -> flag corrispondente inviato al manager che terminerà la sua esecuzione
 		solo quando la lista dei descrittori di connessioni sarà vuota e, sulla base
 		di tale condizione, sveglierà i workers con una signal_broadcast e setterà
 		un flag apposito per far sì che al loro risveglio i workers terminino normalmente.
-		Successivamente farà la free delle strutture.
+		Successivamente farà la free delle strutture = IN CORSO, 50%
+		(funziona se quando arriva SIGHUP, non ho client connessi, altrimenti va in deadlock).
+
+	TO DIG INTO:
+		- perchè dopo che arriva SIGHUP ed il client termina la read del manager si blocca
+		e non riceve numeroDiBytesLetti pari a 0.
 */
 
 #include<stdio.h>
@@ -128,9 +133,9 @@ static void* signalHandlerActivity(void* args){
 	FD_CLR(lfd, &active_fds);
 	pthread_mutex_unlock(&connectionsQueueMutex);
 	pthread_mutex_unlock(&lSocketMutex);*/
-	printf("Ho ricevuto segnale %d\n", sig_num);
+	printf("Signal Handler: Ho ricevuto segnale %d\n", sig_num);
 	if(sig_num == SIGHUP){
-		printf("Signal handler: invio roba per gestire SIGHUP\n");
+		//printf("Signal handler: invio roba per gestire SIGHUP\n");
 		pthread_mutex_lock(&signalPipeMutex);
 		if((l = writen(signalPipe[1], &sig_num, sizeof(int))) == -1){
 			perror("Errore scrittura su pipe!\n");
@@ -142,7 +147,7 @@ static void* signalHandlerActivity(void* args){
 		//printf("Faccio azioni di segnali SIGINT o SIGQUIT\n");
 		//pthread_mutex_lock(&flagAccessMutex);
 		//sigIntOrQuitFlag = 1;
-		printf("Signal handler: invio roba per uscire\n");
+		//printf("Signal handler: invio roba per uscire\n");
 		pthread_mutex_lock(&signalPipeMutex);
 		if((l = writen(signalPipe[1], &sig_num, sizeof(int))) == -1){
 			perror("Errore scrittura su pipe!\n");
@@ -155,11 +160,11 @@ static void* signalHandlerActivity(void* args){
 		close(p[0]);
 		close(p[1]);
 		pthread_mutex_unlock(&pipeAccessMutex);
-		printf("Ho ricevuto SIGINT o SIGQUIT quindi esco1\n");
+		//printf("Ho ricevuto SIGINT o SIGQUIT quindi esco1\n");
 		pthread_mutex_lock(&requestsQueueMutex);
 		freeQueue(&requests);
 		pthread_mutex_unlock(&requestsQueueMutex);
-		printf("Ho ricevuto SIGINT o SIGQUIT quindi esco2\n");
+		//printf("Ho ricevuto SIGINT o SIGQUIT quindi esco2\n");
 		//stampa statistiche in ME
 		pthread_mutex_lock(&updateStatsMutex);
 		printServerStats(serverStatistics);
@@ -169,14 +174,16 @@ static void* signalHandlerActivity(void* args){
 		printQueue(fileCache);
 		freeQueue(&fileCache);
 		pthread_mutex_unlock(&fileCacheMutex);
-		printf("Ho ricevuto SIGINT o SIGQUIT quindi esco3\n");
+		//printf("Ho ricevuto SIGINT o SIGQUIT quindi esco3\n");
 		pthread_mutex_lock(&connectionsQueueMutex);
 		FD_ZERO(&active_fds);
 		freeQueue(&connections);
 		pthread_mutex_unlock(&connectionsQueueMutex);
-		printf("Ho ricevuto SIGINT o SIGQUIT quindi esco4\n");
+		//printf("Ho ricevuto SIGINT o SIGQUIT quindi esco4\n");
 		//exit(EXIT_SUCCESS);
 	}
+
+	printf("Signal Handler: ho terminato la mia attività\n");
 	return (void*)NULL;
 }
 
@@ -194,6 +201,12 @@ int updateActiveFds(fd_set set, int fd_num){
 		}
 	}
 	return max;
+}
+
+//da rivedere la scelta
+int executeCloseConnRequest(MyRequest r){
+	printf("Eseguo closeConn\n");
+	return 0;
 }
 
 /*
@@ -283,8 +296,11 @@ static void* managerThreadActivity(void* args){
 								perror("Errore read da pipe!");
 								exit(EXIT_FAILURE);
 							}
+							pthread_mutex_lock(&connectionsQueueMutex);
+							FD_CLR(signalPipe[0], &active_fds);
+							pthread_mutex_unlock(&connectionsQueueMutex);
 							pthread_mutex_unlock(&signalPipeMutex);
-							printf("Ho ricevuto segnale %d\n", sig_num);
+							printf("Manager: Ho ricevuto segnale %d\n", sig_num);
 							if(sig_num == SIGINT || sig_num == SIGQUIT){
 								//pthread_mutex_lock(&flagAccessMutex);
 								active = 0;
@@ -295,11 +311,13 @@ static void* managerThreadActivity(void* args){
 								pthread_mutex_unlock(&requestsQueueMutex);
 								break;
 							}else if(sig_num == SIGHUP){
+								printf("Sono in ramo SIGHUP\n");
 								pthread_mutex_lock(&connectionsQueueMutex);
 								sigHupFlag = 1;
 								close(lfd);
 								FD_CLR(lfd, &active_fds);
-								if(isEmpty(connections)){
+								if(isEmpty(connections) == 1){
+									printf("BA\n");
 									pthread_mutex_lock(&requestsQueueMutex);
 									sigIntOrQuitFlag = 1;
 									pthread_cond_broadcast(&waitingForRequestsList);
@@ -308,6 +326,7 @@ static void* managerThreadActivity(void* args){
 									active = 0;
 									break;
 								}
+								printf("BO\n");
 								pthread_mutex_unlock(&connectionsQueueMutex);
 							}
 						}
@@ -334,7 +353,8 @@ static void* managerThreadActivity(void* args){
 								exit(EXIT_FAILURE);
 							}
 							if(l == 0){ //EOF sul descrittore di indice index
-								clearBuffer(buf, 1024);
+								printf("Terminazione connesione\n");
+								//clearBuffer(buf, 1024);
 								close(index);
 								pthread_mutex_lock(&connectionsQueueMutex);
 								FD_CLR(index, &active_fds);
@@ -545,9 +565,9 @@ int replacingAlgorithm(){
 			//printQueue(fileCache);
 			//printf("FINE STAMPA CACHE\n");
 			deleteElement(&fileCache, (void*) toDel);
-			printf("Stato cache modificata:\n");
-			printQueue(fileCache);
-			printf("FINE STAMPA CACHE MODIFICATA\n");
+			//printf("Stato cache modificata:\n");
+			//printQueue(fileCache);
+			printf("FINE MODIFICA CACHE \n");
 			actQueueSize = fileCache.size ;
 			//pthread_mutex_unlock(&fileCacheMutex);
 		}
@@ -790,7 +810,7 @@ int executeCloseFile(MyRequest r){
 	0 -> successo
 	-1 -> errori di read/write
 
-	Rimuove il file cercato se presente ed in stato di locked(non implementato)
+	Rimuove il file cercato se presente ed in stato di locked(non implementato, quindi fallisce sempre)
 */
 int executeRemoveFile(MyRequest r){
 	pthread_mutex_lock(&fileCacheMutex);
@@ -833,6 +853,7 @@ int executeRemoveFile(MyRequest r){
 	-1 -> errori di read/write
 
 	Estende contenuto del file se presente ed aperto
+	e se ciò non causa il fallimento dell'algoritmo di rimpiazzamento
 */
 int executeAppendFile(MyRequest r){
 	MyFile f1, toRead;
@@ -969,6 +990,7 @@ int executeReadNFile(MyRequest r){
 	int finished = 0;
 
 	pthread_mutex_lock(&fileCacheMutex);
+	//se N <= 0 o più grande della cache size io invio tutti i file attualemente in cache
 	int numFileExpected = N <= 0 || N > fileCache.size? fileCache.size : N;
 	pthread_mutex_unlock(&fileCacheMutex);
 
@@ -991,7 +1013,7 @@ int executeReadNFile(MyRequest r){
 		if((l = writen(r.comm_socket, toSend->content, toSend->dim)) == -1){
 			return -1;
 		}
-
+		//aggiorno ulitma operazione con successo eseguita sul file
 		toSend->lastSucceedOp.opType = r.type;
 		toSend->lastSucceedOp.optFlags = r.flags;
 		toSend->lastSucceedOp.clientDescriptor = r.comm_socket;
@@ -1017,8 +1039,8 @@ int executeReadNFile(MyRequest r){
 	scrivere il file
 */
 int executeWriteFile(MyRequest r){
-	int buf_size, l, found = 0, result, replaceResult;
-	char *buf;
+	int buf_size, l, found = 0, result = 0, replaceResult;
+	char *buf; //buffer dove salvare i dati da scrivere
 	MyFile toFind;
 	memset(&toFind, 0, sizeof(MyFile));
 
@@ -1040,6 +1062,7 @@ int executeWriteFile(MyRequest r){
 	int replaceCondition = verifyReplaceCondition(r.type, buf_size);
 	int replacePossibility = verifyReplacePossibility(r.type, r.request_content, buf_size);
 
+	//ho errore se l'implicazione verifyReplaceCondition -> verifyReplacePossibility è falsa
 	if(replaceCondition == 1 && replacePossibility == 0){
 		result = -5;
 		if((l = writen(r.comm_socket, &result, sizeof(int))) == -1)
@@ -1101,7 +1124,7 @@ int executeWriteFile(MyRequest r){
 		pthread_mutex_unlock(&fileCacheMutex);
 		corr = corr->next;
 	}
-	if(found == 0) //non ho trovato il file 
+	if(found == 0 && result == 0) //non ho trovato il file e non ho incontrato errori precedenti
 		result = -1;
 	if((l = writen(r.comm_socket, &result, sizeof(int))) == -1)
 		return -1;
@@ -1143,6 +1166,10 @@ static void executeRequest(MyRequest r){
 			if(executeWriteFile(r) == -1)
 				perror("Errore esecuzione richiesta WRITE_FILE");
 			break;
+		case CLOSE_CONN:
+			if(executeCloseConnRequest(r) == -1)
+				perror("Errore esecuzione richiesta CLOSE_CONN");
+			break;
 		default: return;	
 	}
 }
@@ -1178,7 +1205,7 @@ static void* workerThreadActivity(void* args){
 		pthread_mutex_lock(&requestsQueueMutex); //accesso in ME
 		while(isEmpty(requests) == 1){ //coda vuota
 			pthread_cond_wait(&waitingForRequestsList, &requestsQueueMutex);
-			if(sigIntOrQuitFlag == 1){
+			if(sigIntOrQuitFlag == 1){ //se quando mi sveglio devo interrmopermi esco e termino
 				//printf("Esco dalla wait\n");
 				break;
 			}

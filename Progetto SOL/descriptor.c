@@ -6,7 +6,7 @@ int descriptorComparison(void* f1, void *f2){
 	MyDescriptor a = *(MyDescriptor*) f1;
 	MyDescriptor b = *(MyDescriptor*) f2;
 
-	return (a.cfd == b.cfd);
+	return (a.cfd == b.cfd); //paragone solo su cfd
 }
 
 void descriptorPrint(void* c){

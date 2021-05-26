@@ -100,7 +100,7 @@ int main(int argc, char const *argv[]){
 	c = getConfigInfoFromCmd(argc, argv); //parso il cmd cercando solo le opzioni di config
 	printConfigInfo(c);
 
-	getToSendRequestsFromCmd(argc, argv);
+	//getToSendRequestsFromCmd(argc, argv);
 	//printQueue(toSendRequestQueue);
 
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
@@ -140,7 +140,7 @@ int main(int argc, char const *argv[]){
 	/*z = writeFile("fileDaLeggere.txt", NULL);
 	printf("%d %d\n", z, errno);*/
 	//srand(time(NULL));
-	sleep(20);
+	sleep(10);
 
 	int x = closeConnection(c.socketName);
 	printf("Esito terminazione connesione: %d\n", x);
