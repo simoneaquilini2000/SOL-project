@@ -172,6 +172,8 @@ void freeQueue(GenericQueue *q){
 	//GenericNode* corr = q->queue.head;
 	GenericNode* toDel;
 
+	//free(q->queue.tail);
+
 	while(q->queue.head != NULL){
 		//printf("Sto eliminando");
 		toDel = q->queue.head;

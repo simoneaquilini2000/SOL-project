@@ -6,6 +6,21 @@
 	da spedire al server
 */
 
+/*
+	Oltre alle opzioni indicate nella specifica,
+	per arrivare ad avere corrispondenza uno ad uno
+	tra opzioni da riga di comando e tipi di richieste
+	da mandare al server ho deciso di aggiungerne alcune mancanti:
+		-o file1[,file2] -> apro i file specificati(non ho il flag O_CREAT
+		quindi se non sono presenti nella cache l'operazione fallirà)
+
+		-i dirname[,n] -> semantica analoga all'opzione -w, ma 
+		riadattata con il tipo di richiesta OPEN_FILE(stavolta il flag O_CREAT
+		è specificato, quindi se si tenta di creare un file già esistente oppure
+		non si ha la possibilità di inserirlo l'operazione fallirà)
+
+		-C file1[,file2] -> chiudo i file specificati, se esistono nella cache
+*/
 #define ALL_OPTIONS "h::p::f:w:W:r:R::d:c:t:"
 
 typedef struct i{

@@ -317,6 +317,7 @@ static void* managerThreadActivity(void* args){
 									exit(EXIT_FAILURE);
 								}
 								if(l == 0){ //EOF sul descrittore di indice index
+									printf("Terminazione connessione\n");
 									//clearBuffer(buf, 1024);
 									close(index);
 									pthread_mutex_lock(&connectionsQueueMutex);
@@ -596,9 +597,9 @@ int executeOpenFile(MyRequest r){
 				strncpy(p->filePath, r.request_content, strlen(r.request_content));
 				if(strlen(p->filePath) < 4096)
 					p->filePath[strlen(r.request_content)] = '\0';
-				p->content = malloc(25 * sizeof(char)); //dimensione base
+				p->content = NULL;
 				//clearBuffer(p->content, 25);
-				memset(p->content, 0, 25 * sizeof(char));
+				//memset(p->content, 0, 25 * sizeof(char));
 				p->dim = 0;
 				p->lastSucceedOp.opType = r.type;
 				p->lastSucceedOp.optFlags = r.flags;
@@ -745,7 +746,6 @@ int executeCloseFile(MyRequest r){
 			}else{
 				toRead->isOpen = 0;
 				res  = 0;
-				toRead->modified = 0; // la chiusura del file implica il "salvataggio" delle modifiche e l'azzeramento del flag apposito
 				toRead->lastSucceedOp.opType = r.type;
 				toRead->lastSucceedOp.optFlags = r.flags;
 				toRead->lastSucceedOp.clientDescriptor = r.comm_socket;
@@ -894,7 +894,7 @@ int executeAppendFile(MyRequest r){
 						exit(EXIT_FAILURE);
 					}
 				}
-				strncat(toAppend->content, buf, strlen(buf));
+				strncat(toAppend->content, buf, strlen(buf) + 1);
 				toAppend->dim += l;
 				toAppend->content[toAppend->dim] = '\0';
 				toAppend->modified = 1;
@@ -1053,9 +1053,10 @@ int executeWriteFile(MyRequest r){
 							//MyFile backup = *toWrite; //copia stato attuale del file in caso di rollback
 							toWrite->content = malloc(buf_size + 1);
 							memset(toWrite->content, 0, sizeof(char) * (buf_size + 1));
-							strncpy(toWrite->content, buf, buf_size);
+							strncpy(toWrite->content, buf, buf_size + 1);
+							//printf("File content: %s\n", toWrite->content);
+							toWrite->content[buf_size] = '\0';
 							toWrite->dim = strlen(toWrite->content);
-							toWrite->content[toWrite->dim] = '\0';
 							toWrite->modified = 1;
 							toWrite->timestamp = time(NULL);
 							toWrite->lastSucceedOp.opType = r.type;
