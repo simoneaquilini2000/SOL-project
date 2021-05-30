@@ -122,17 +122,26 @@ int main(int argc, char const *argv[]){
 	z = openFile("fileDaLeggere4.txt", O_CREAT);
 	printf("%d %d\n", z, errno);
 
-	z = openFile("fileDaLeggere5.txt", O_CREAT);
+	z = openFile("progetto_SOL_20-21.pdf", O_CREAT);
 	printf("%d %d\n", z, errno);
 
 	//z = openFile("fileDaLeggere.txt", O_CREAT);
 	//printf("%d %d\n", z, errno);
+	char buffer[1024];
+
+	strcpy(buffer, "Ciao mamma!");
 
 	z = writeFile("fileDaLeggere.txt", NULL);
 	printf("%d %d\n", z, errno);
 
-	z = writeFile("fileDaLeggere2.txt", NULL);
+	z = writeFile("progetto_SOL_20-21.pdf", NULL);
 	printf("%d %d\n", z, errno);
+
+	z = appendToFile("progetto_SOL_20-21.pdf", buffer, strlen(buffer), NULL);
+	printf("%d %d\n", z, errno);
+
+	//z = readNFiles(-1, c.saveReadFileDir);
+	//printf("%d %d\n", z, errno);
 
 	//z = writeFile("fileDaLeggere3.txt", NULL);
 	//printf("%d %d\n", z, errno);
@@ -140,7 +149,7 @@ int main(int argc, char const *argv[]){
 	/*z = writeFile("fileDaLeggere.txt", NULL);
 	printf("%d %d\n", z, errno);*/
 	//srand(time(NULL));
-	sleep(10);
+	sleep(2);
 
 	int x = closeConnection(c.socketName);
 	printf("Esito terminazione connesione: %d\n", x);

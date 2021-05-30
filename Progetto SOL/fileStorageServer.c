@@ -817,6 +817,8 @@ int executeAppendFile(MyRequest r){
 	int res = 0, l, replaceResult;
 	size_t buf_size;
 	char *buf;
+
+	memset(&f1, 0, sizeof(f1));
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
 
 	printf("Inizio richiesta APPEND_FILE\n");
@@ -878,7 +880,7 @@ int executeAppendFile(MyRequest r){
 				res = -2;
 			}else{
 				res = 0;
-				int act_dim = strlen(toAppend->content) + 1;
+				int act_dim = toAppend->dim + 1;
 				pthread_mutex_lock(&updateStatsMutex);
 				int checkCond = (toAppend->dim + l > s.maxStorageSpace);
 				pthread_mutex_unlock(&updateStatsMutex);
@@ -894,7 +896,9 @@ int executeAppendFile(MyRequest r){
 						exit(EXIT_FAILURE);
 					}
 				}
-				strncat(toAppend->content, buf, strlen(buf) + 1);
+				//strncat(toAppend->content, buf, strlen(buf) + 1);
+				//printf("Prima di estendere il contenuto: %s\n", toAppend->content);
+				memcpy(toAppend->content + toAppend->dim, buf, l);
 				toAppend->dim += l;
 				toAppend->content[toAppend->dim] = '\0';
 				toAppend->modified = 1;
@@ -1053,10 +1057,11 @@ int executeWriteFile(MyRequest r){
 							//MyFile backup = *toWrite; //copia stato attuale del file in caso di rollback
 							toWrite->content = malloc(buf_size + 1);
 							memset(toWrite->content, 0, sizeof(char) * (buf_size + 1));
-							strncpy(toWrite->content, buf, buf_size + 1);
+							//strncpy(toWrite->content, buf, buf_size + 1);
+							memcpy(toWrite->content, buf, buf_size);
 							//printf("File content: %s\n", toWrite->content);
 							toWrite->content[buf_size] = '\0';
-							toWrite->dim = strlen(toWrite->content);
+							toWrite->dim = buf_size;
 							toWrite->modified = 1;
 							toWrite->timestamp = time(NULL);
 							toWrite->lastSucceedOp.opType = r.type;

@@ -133,13 +133,16 @@ char* readFileContent(const char *pathname, char **fileContent){
 
 	*fileContent = malloc(1);
 	int act_dim = 1, precDim;
+	int fileDim = 0;
 	int charToAdd;
 
 	FILE *toRead = fopen(absPath, "rb");
 
 	while((charToAdd = fread(recBuf, sizeof(char), 1024, toRead)) > 0){
 		//printf("Ho letto %d caratteri\n", charToAdd);
-		precDim = strlen(*fileContent) + 1;
+		precDim = fileDim;
+		 //aumento numero di byte letti
+		//precDim = strlen(*fileContent) + 1;
 		while(precDim + charToAdd >= act_dim){
 			//printf("Rialloco\n");
 			*fileContent = realloc(*fileContent, sizeof(char) * (2 * act_dim));
@@ -149,8 +152,9 @@ char* readFileContent(const char *pathname, char **fileContent){
 			}
 			act_dim *= 2;
 		}
-		strncat(*fileContent, recBuf, charToAdd);
-		fileContent[strlen(*fileContent)] = '\0';
+		memcpy((*fileContent) + fileDim, recBuf, charToAdd);
+		fileDim += charToAdd;
+		//fileContent[fileDim] = '\0';
 	}
 
 	fclose(toRead);

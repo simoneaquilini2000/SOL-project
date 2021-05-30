@@ -80,7 +80,6 @@ int closeConnection(const char* sockName){
 	do{
 		//printf("Sto chiudendo connessione\n");
 		int closeRes = close(comm_socket_descriptor);
-		printf("Close result: %d\n", closeRes);
 		if(closeRes == -1 && errno != EINTR){
 			printf("MUOIO\n");
 			errno = EBADR; //descrittore richiesto non valido
