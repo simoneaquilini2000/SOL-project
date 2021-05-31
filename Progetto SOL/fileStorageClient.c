@@ -82,9 +82,14 @@ void testFileNonTestuali(const char *pathname){
 	char *r;
 	MyFile f;
 	memset(&f, 0, sizeof(f));
+
+	//printf("Pathname=%s\n", pathname);
 	
-	strcpy(f.filePath, pathname);
-	readFileContent(pathname, &f.content);
+	strncpy(f.filePath, pathname, strlen(pathname));
+	f.filePath[strlen(f.filePath)] = '\0';
+	f.dim = readFileContent(pathname, &f.content);
+
+	//f.dim = strlen(f.content);
 
 	saveFile(f, "./TestFileBinari");
 }
@@ -113,12 +118,10 @@ int main(int argc, char const *argv[]){
 
 	
 
-	getToSendRequestsFromCmd(argc, argv);
-	printQueue(toSendRequestQueue);
+	//getToSendRequestsFromCmd(argc, argv);
+	//printQueue(toSendRequestQueue);
 
-	testFileNonTestuali("progetto_SOL_20-21.pdf");
-
-	return 0;
+	//testFileNonTestuali("progetto_SOL_20-21.pdf");
 
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
 
@@ -157,11 +160,11 @@ int main(int argc, char const *argv[]){
 	//z = appendToFile("progetto_SOL_20-21.pdf", buffer, strlen(buffer), NULL);
 	//printf("%d %d\n", z, errno);
 
-	z = writeFile("QuadratoRosso.png", NULL);
-	printf("%d %d\n", z, errno);
-
-	//z = readNFiles(-1, "./Test_Bash_Safe");
+	//z = writeFile("QuadratoRosso.png", NULL);
 	//printf("%d %d\n", z, errno);
+
+	z = readNFiles(-1, "./Test_Bash_Safe");
+	printf("%d %d\n", z, errno);
 
 	//z = writeFile("fileDaLeggere3.txt", NULL);
 	//printf("%d %d\n", z, errno);

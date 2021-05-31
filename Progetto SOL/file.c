@@ -57,6 +57,8 @@ void freeFile(void* s){
 }
 
 char* getFileNameFromPath(char path[]){
+	//printf("Original path: %s\n", path);
+
 	char *token = strtok(path, "/");
 	char *ris;
 	int dim = 0;
@@ -75,7 +77,7 @@ char* getFileNameFromPath(char path[]){
 		if(token != NULL)
 			free(ris);
 	}
-
+	//printf("Real filename: %s\n", ris);
 	return ris;
 }
 
@@ -97,8 +99,30 @@ int saveFile(MyFile f, const char dirname[]){
 		return -1;
 	}
 
+	//printf("WOW2 = %s\n", f.filePath);
+
 	char *fileName = getFileNameFromPath(f.filePath);
-	FILE *toWrite = fopen(fileName, "wb");
+
+	printf("WOW = %s\n", fileName);
+
+	int file_fd = open(fileName, O_RDWR | O_CREAT, 0700);
+
+	if(file_fd == -1){
+		perror("Errore open in sola scrittura!\n");
+		return -1;
+	}
+
+	if((l = writen(file_fd, f.content, f.dim)) == -1){
+		perror("Errore write!\n");
+		chdir(previousCwd);
+		return -1;
+	}
+
+	//printf("Dovevo scrivere %d caratteri, \
+	 ma ho scritto %d caratteri cioè %s\n", f.dim, l, f.content);
+
+	close(file_fd);
+	/*FILE *toWrite = fopen(fileName, "wb");
 
 	if(toWrite == NULL){
 		perror("Errore open!\n");
@@ -116,7 +140,7 @@ int saveFile(MyFile f, const char dirname[]){
 		perror("Errore close!\n");
 		chdir(previousCwd);
 		return -1;
-	}
+	}*/
 
 	if(chdir(previousCwd) == -1){
 		return -1;
@@ -124,25 +148,79 @@ int saveFile(MyFile f, const char dirname[]){
 	return 1;
 }
 
-char* readFileContent(const char *pathname, char **fileContent){
+int readFileContent(const char *pathname, char **fileContent){
 	if(pathname == NULL)
 		return NULL;
 
 	char absPath[PATH_MAX];
 	char recBuf[1024];
+	memset(recBuf, 0, 1024);
 	char *ris = realpath(pathname, absPath);
 
 	//Leggo il contenuto del file(che si trova in absPath) e modifico fileContent
 
 	if(ris == NULL) //ris == NULL significa che pathname non è stato trovato
-		return NULL;
+		return -1;
 
 	*fileContent = malloc(1);
 	int act_dim = 1, precDim;
 	int fileDim = 0;
 	int charToAdd;
 
-	FILE *toRead = fopen(absPath, "rb");
+	FILE *fp = fopen(absPath, "r");
+
+    // checking if the file exist or not
+    if (fp == NULL)
+    {
+        printf("(%d) - File Not Found!\n", getpid());
+        return -1;
+    }
+
+    fseek(fp, 0L, SEEK_END);
+
+    long int expectedFileSize = ftell(fp);
+
+    fclose(fp);
+
+	*fileContent = (char*) calloc(expectedFileSize + 1, sizeof(char));
+
+	int file_fd = open(absPath, (O_RDWR | O_APPEND));
+
+	if(file_fd == -1){
+		perror("Errore open in sola lettura!\n");
+		return -1;
+	}
+
+	fileDim = readn(file_fd, *fileContent, expectedFileSize);
+
+	//printf("Ho letto %d caratteri cioè %s\n", fileDim, *fileContent);
+
+	/*while((charToAdd = readn(file_fd, recBuf, 1024)) > 0){
+		printf("Ho letto %d caratteri\n", charToAdd);
+		precDim = fileDim;
+		 //aumento numero di byte letti
+		//precDim = strlen(*fileContent) + 1;
+		while(precDim + charToAdd >= act_dim){
+			//printf("Rialloco\n");
+			*fileContent = realloc(*fileContent, sizeof(char) * (2 * act_dim));
+			if(*fileContent == NULL){
+				close(file_fd);
+				printf("BAB\n");
+				return -1;
+			}
+			act_dim *= 2;
+		}
+		memcpy((*fileContent) + fileDim, recBuf, charToAdd);
+		fileDim += charToAdd;
+		memset(recBuf, 0, 1024);
+		*fileContent[fileDim] = '\0';
+	}
+
+	printf("File dimension= %d\n", fileDim);
+
+	close(file_fd);
+
+	/*FILE *toRead = fopen(absPath, "rb");
 
 	while((charToAdd = fread(recBuf, sizeof(char), 1024, toRead)) > 0){
 		//printf("Ho letto %d caratteri\n", charToAdd);
@@ -163,11 +241,11 @@ char* readFileContent(const char *pathname, char **fileContent){
 		//fileContent[fileDim] = '\0';
 	}
 
-	fclose(toRead);
+	fclose(toRead);*/
 
 	//printf("Contenuto: %s\n", fileContent);
 
-	return *fileContent;
+	return fileDim;
 }
 
 //traduzione da path relativo ad assoluto

@@ -250,7 +250,7 @@ int readNFiles(int N, const char* dirname){
 			errno = EAGAIN;
 			return -1;
 		}
-
+		//printf("Sto ricevendo file %s\n", toSave.filePath);
 		toSave.content = malloc(toSave.dim * sizeof(char));
 
 		if((l = readn(comm_socket_descriptor, toSave.content, toSave.dim)) == -1){
@@ -289,18 +289,18 @@ int writeFile(const char* pathname, const char* dirname){
 	char absPath[PATH_MAX];
 	memset(absPath, 0, sizeof(absPath));
 	//funzione per cercare file che ritorna *char nel quale ho il contenuto del file
-	char *ris = readFileContent(pathname, &fileContent);
+	int ris = readFileContent(pathname, &fileContent); //ris contiene il numero di byte letti
 	MyRequest r;
 	memset(&r, 0, sizeof(MyRequest));
 
-	if(ris == NULL){
-		perror("Non ho trovato il file richiesto\n");
-		errno = ENOENT;
+	if(ris == -1){
+		perror("Errore lettura file\n");
+		errno = EIO;
 		return -1;
 	}
 	//setup richiesta
-	fileContentDim = strlen(fileContent);
-	realpath(pathname, absPath); //sicuro che absPath non è vuoto in quanto ris != NULL
+	fileContentDim = ris;
+	realpath(pathname, absPath); //sicuro che absPath non è vuoto in quanto ris != -1
 	r.type = WRITE_FILE;
 	r.timestamp = time(NULL);
 	r.flags = 0;

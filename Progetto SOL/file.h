@@ -41,7 +41,7 @@ int saveFile(MyFile, const char[]);
 	l'intero contenuto del file specificato come primo parametro.
 	Ritorna NULL in caso di errore
 */
-char* readFileContent(const char *, char **);
+int readFileContent(const char *, char **);
 
 /*
 	Funzione di traduzione da path relativo ad assoluto
