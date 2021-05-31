@@ -7,6 +7,7 @@
 #include<sys/stat.h>
 #include<sys/types.h>
 #include<dirent.h>
+#include<fcntl.h>
 #include "clientConfig.h"
 #include "generic_queue.h"
 //#include "file.h"
@@ -122,7 +123,7 @@ void printConfigInfo(ClientConfigInfo c){
 	printf("\trequestInterval: %ld\n", c.requestInterval);
 }
 
-int buildInsertRequest(int type, char *arg){
+int buildInsertRequest(int type, char *arg, int request_flags){
 	char *token = strtok(arg, ",");
 	char buf[PATH_MAX];
 	char *fileToFind;
@@ -132,6 +133,7 @@ int buildInsertRequest(int type, char *arg){
 		MyRequest *r = malloc(sizeof(MyRequest));
 		memset(r, 0, sizeof(MyRequest));
 		r->type = type;
+		r->flags = request_flags;
 		//fileToFind = getFileNameFromPath(token);
 		filePath = realpath(token, buf); //ottengo path assoluto dato quello relativo
 		if(filePath == NULL && type == WRITE_FILE){
@@ -151,7 +153,7 @@ int buildInsertRequest(int type, char *arg){
 	return 0;
 }
 
-int buildReadNRequest(int type, char *arg){
+int buildReadNRequest(int type, char *arg, int request_flags){
 	long ris;
 	MyRequest *toAdd = malloc(sizeof(MyRequest));
 	memset(toAdd, 0, sizeof(MyRequest));
@@ -175,6 +177,7 @@ int buildReadNRequest(int type, char *arg){
 		//printf("ris = %d\n", ris);
 		strncpy(toAdd->request_content, arg, strlen(arg));
 	}
+	toAdd->flags = request_flags;
 
 	//printf("Ho modificato il contenuto = %s\n", toAdd->request_content);
 
@@ -185,7 +188,7 @@ int buildReadNRequest(int type, char *arg){
 	return 0;
 }
 
-int navigateFileSystem(char *rootPath, int n, int flag){
+int navigateFileSystem(char *rootPath, int n, int flag, int request_type, int request_flags){
 	if(flag && n <= 0) //flag usato per indicare se c'è una quantità massima di file da leggere
 		return 0;
 
@@ -210,7 +213,7 @@ int navigateFileSystem(char *rootPath, int n, int flag){
 		if(strcmp(actFile->d_name, ".") != 0 && strcmp(actFile->d_name, "..") != 0){
 			if(S_ISDIR(fileInfo.st_mode)){
 				getcwd(cWorkDir, 1024);
-				readFiles += navigateFileSystem(actFile->d_name, n - readFiles, flag);
+				readFiles += navigateFileSystem(actFile->d_name, n - readFiles, flag, request_type, request_flags);
 				if(chdir(cWorkDir) == -1){
 					printf("Errore cambio working directory!\n");
 					exit(EXIT_FAILURE);
@@ -219,7 +222,8 @@ int navigateFileSystem(char *rootPath, int n, int flag){
 				if((flag && readFiles < n) || !flag){
 					MyRequest *r = malloc(sizeof(MyRequest));
 					memset(r, 0, sizeof(MyRequest));
-					r->type = WRITE_FILE;
+					r->type = request_type;
+					r->flags = request_flags;
 					//printf("Inserisco richiesta WRITE_FILE per il file %s\n", actFile->d_name);
 					if(realpath(actFile->d_name, buf) != NULL){
 						//per costruire richiesta ottengo path assoluto dei file
@@ -242,9 +246,10 @@ int navigateFileSystem(char *rootPath, int n, int flag){
 	return readFiles;
 }
 
-int buildMultipleWriteRequest(int type, char* arg){
+int buildMultipleWriteRequest(int type, char* arg, int request_flags){
 	char *dir = strtok(arg, ","); //ottengo cartella da cui partire per manadare richieste di WRITE_FILE
 	char buf[PATH_MAX];
+	char currDir[PATH_MAX];
 
 	//Gestisco l'opzione -w
 
@@ -266,8 +271,10 @@ int buildMultipleWriteRequest(int type, char* arg){
 		else
 			flag = 1;
 	}
-
-	int writtenRequests = navigateFileSystem(buf, n, flag); //navigo FS ed inserisco le richieste
+	getcwd(currDir, PATH_MAX);
+	int writtenRequests = navigateFileSystem(buf, n, flag, type, request_flags); //navigo FS ed inserisco le richieste
+	chdir(currDir);
+	//printf("Ora la cwd è: %s\n", currDir); //devo ristabilire cwd
 	if(flag && writtenRequests != n)
 		return -1;
 	else if(flag && writtenRequests == n)
@@ -282,17 +289,23 @@ void getToSendRequestsFromCmd(int argc, const char* argv[]){
 	optind = 1;
 	while((o = getopt(argc, argv, ALL_OPTIONS)) != -1){
 		switch(o){
-			case 'w': buildMultipleWriteRequest(WRITE_FILE, optarg);
+			case 'w': buildMultipleWriteRequest(WRITE_FILE, optarg, 0);
 					  break;
-			case 'r': buildInsertRequest(READ_FILE, optarg);
+			case 'r': buildInsertRequest(READ_FILE, optarg, 0);
 					  break;
-			case 'W': buildInsertRequest(WRITE_FILE, optarg);
+			case 'W': buildInsertRequest(WRITE_FILE, optarg, 0);
 					  break;
 			case 'R': //printf("Ciao\n");
-					  buildReadNRequest(READ_N_FILE, optarg);
+					  buildReadNRequest(READ_N_FILE, optarg, 0);
 					  //printf("Ciao2\n");
 					  break;
-			case 'c': buildInsertRequest(REMOVE_FILE, optarg);
+			case 'c': buildInsertRequest(REMOVE_FILE, optarg, 0);
+					  break;
+			case 'i': buildMultipleWriteRequest(OPEN_FILE, optarg, O_CREAT);
+					  break;
+			case 'o': buildInsertRequest(OPEN_FILE, optarg, 0);
+					  break;
+			case 'C': buildInsertRequest(CLOSE_FILE, optarg, 0);
 					  break;
 			case '?': printf("Invalid option(s)\n");
 					  exit(EXIT_FAILURE);

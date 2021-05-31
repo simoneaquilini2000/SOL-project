@@ -21,7 +21,7 @@
 
 		-C file1[,file2] -> chiudo i file specificati, se esistono nella cache
 */
-#define ALL_OPTIONS "h::p::f:w:W:r:R::d:c:t:"
+#define ALL_OPTIONS "h::p::f:w:W:r:R::d:c:t:C:i:o:"
 
 typedef struct i{
 	int printEnable; //flag per abilitare le stampe su stdout per ogni operazione(opzione -p)
@@ -44,7 +44,7 @@ void printConfigInfo(ClientConfigInfo);
 	e crea per ognuna di queste una richiesta del tipo passato come primo parametro,
 	inserendola nella coda di richieste
 */
-int buildInsertRequest(int, char*);
+int buildInsertRequest(int, char*, int);
 
 /*
 	Inserisce nella coda di richieste fino a n richieste WRITE_FILE
@@ -53,13 +53,13 @@ int buildInsertRequest(int, char*);
 	per tutti i file nella directory rootpath(per distinguere i 2 casi
 	ho l'ultimo parametro che funge da flag)
 */
-int navigateFileSystem(char *, int, int);
+int navigateFileSystem(char *, int, int, int, int);
 
 /*
 	Inserisce nella coda una richiesta di tipo READ_N_FILE 
 	con eventuale parametro n nel campo request_content della struttura
 */
-int buildReadNRequest(int, char*);
+int buildReadNRequest(int, char*, int);
 
 //parsa la cmd e costruisce la coda delle richieste da spedire al server
 void getToSendRequestsFromCmd(int, const char* []);

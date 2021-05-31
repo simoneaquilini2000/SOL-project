@@ -59,6 +59,7 @@ void freeFile(void* s){
 char* getFileNameFromPath(char path[]){
 	char *token = strtok(path, "/");
 	char *ris;
+	int dim = 0;
 
 	/*
 		Tokenizzo la stringa fino ad arrivare all'ultimo token
@@ -68,6 +69,8 @@ char* getFileNameFromPath(char path[]){
 		ris = malloc(strlen(token) + 1);
 		memset(ris, 0, strlen(token));
 		strncpy(ris, token, strlen(token));
+		dim = strlen(ris);
+		ris[dim] = '\0';
 		token = strtok(NULL, "/");
 		if(token != NULL)
 			free(ris);
@@ -85,14 +88,17 @@ int saveFile(MyFile f, const char dirname[]){
 
 	getcwd(previousCwd, 1024);
 
-	if(ris == NULL)
+	if(ris == NULL){
+		printf("Cartella specificata non esistente\n");
 		return -1;
+	}
 	if(chdir(absPath) == -1){
+		printf("Errore chdir\n");
 		return -1;
 	}
 
 	char *fileName = getFileNameFromPath(f.filePath);
-	FILE *toWrite = fopen(fileName, "w");
+	FILE *toWrite = fopen(fileName, "wb");
 
 	if(toWrite == NULL){
 		perror("Errore open!\n");

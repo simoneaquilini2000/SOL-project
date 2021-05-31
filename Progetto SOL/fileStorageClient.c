@@ -35,7 +35,7 @@ int sendRequests(){
 
 	while(isEmpty(toSendRequestQueue) == 0){
 		MyRequest *actReq = (MyRequest*) pop(&toSendRequestQueue);
-		printf("Prendo richiesta\n");
+		//printf("Prendo richiesta\n");
 		if(actReq == NULL)
 			return -1;
 		
@@ -78,6 +78,17 @@ int sendRequests(){
 	return 0;
 }
 
+void testFileNonTestuali(const char *pathname){
+	char *r;
+	MyFile f;
+	memset(&f, 0, sizeof(f));
+	
+	strcpy(f.filePath, pathname);
+	readFileContent(pathname, &f.content);
+
+	saveFile(f, "./TestFileBinari");
+}
+
 int main(int argc, char const *argv[]){
 	char o;
 	struct timespec ts; //struttura che indica la massima attesa per la connessione nella openConnection
@@ -100,8 +111,14 @@ int main(int argc, char const *argv[]){
 	c = getConfigInfoFromCmd(argc, argv); //parso il cmd cercando solo le opzioni di config
 	printConfigInfo(c);
 
-	//getToSendRequestsFromCmd(argc, argv);
-	//printQueue(toSendRequestQueue);
+	
+
+	getToSendRequestsFromCmd(argc, argv);
+	printQueue(toSendRequestQueue);
+
+	testFileNonTestuali("progetto_SOL_20-21.pdf");
+
+	return 0;
 
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
 
@@ -116,7 +133,7 @@ int main(int argc, char const *argv[]){
 	z = openFile("fileDaLeggere2.txt", O_CREAT);
 	printf("%d %d\n", z, errno);
 
-	z = openFile("fileDaLeggere3.txt", O_CREAT);
+	z = openFile("QuadratoRosso.png", O_CREAT);
 	printf("%d %d\n", z, errno);
 
 	z = openFile("fileDaLeggere4.txt", O_CREAT);
@@ -129,18 +146,21 @@ int main(int argc, char const *argv[]){
 	//printf("%d %d\n", z, errno);
 	char buffer[1024];
 
-	strcpy(buffer, "Ciao mamma!");
+	//strcpy(buffer, "Ciao mamma!");
 
-	z = writeFile("fileDaLeggere.txt", NULL);
-	printf("%d %d\n", z, errno);
+	//z = writeFile("fileDaLeggere.txt", NULL);
+	//printf("%d %d\n", z, errno);
 
 	z = writeFile("progetto_SOL_20-21.pdf", NULL);
 	printf("%d %d\n", z, errno);
 
-	z = appendToFile("progetto_SOL_20-21.pdf", buffer, strlen(buffer), NULL);
+	//z = appendToFile("progetto_SOL_20-21.pdf", buffer, strlen(buffer), NULL);
+	//printf("%d %d\n", z, errno);
+
+	z = writeFile("QuadratoRosso.png", NULL);
 	printf("%d %d\n", z, errno);
 
-	//z = readNFiles(-1, c.saveReadFileDir);
+	//z = readNFiles(-1, "./Test_Bash_Safe");
 	//printf("%d %d\n", z, errno);
 
 	//z = writeFile("fileDaLeggere3.txt", NULL);

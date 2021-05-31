@@ -1062,6 +1062,8 @@ int executeWriteFile(MyRequest r){
 							//printf("File content: %s\n", toWrite->content);
 							toWrite->content[buf_size] = '\0';
 							toWrite->dim = buf_size;
+							MyFile foo = *toWrite;
+							saveFile(foo, "./TestFileBinari");
 							toWrite->modified = 1;
 							toWrite->timestamp = time(NULL);
 							toWrite->lastSucceedOp.opType = r.type;

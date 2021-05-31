@@ -48,6 +48,7 @@ void requestPrint(void* c){
 	printf("Request Dimension: %d\n", d.request_dim);
 	printf("Request content: %s\n", d.request_content);
 	printf("Request send timestamp: %s\n", buff);
+	printf("Request flags: %d\n", d.flags);
 	printf("Type = %d\n\n", d.type);
 }
 
