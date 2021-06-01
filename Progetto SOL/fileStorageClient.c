@@ -151,8 +151,8 @@ int main(int argc, char const *argv[]){
 
 	//strcpy(buffer, "Ciao mamma!");
 
-	//z = writeFile("fileDaLeggere.txt", NULL);
-	//printf("%d %d\n", z, errno);
+	z = writeFile("fileDaLeggere.txt", NULL);
+	printf("%d %d\n", z, errno);
 
 	z = writeFile("progetto_SOL_20-21.pdf", NULL);
 	printf("%d %d\n", z, errno);
@@ -160,10 +160,10 @@ int main(int argc, char const *argv[]){
 	//z = appendToFile("progetto_SOL_20-21.pdf", buffer, strlen(buffer), NULL);
 	//printf("%d %d\n", z, errno);
 
-	//z = writeFile("QuadratoRosso.png", NULL);
-	//printf("%d %d\n", z, errno);
+	z = writeFile("QuadratoRosso.png", NULL);
+	printf("%d %d\n", z, errno);
 
-	z = readNFiles(-1, "./Test_Bash_Safe");
+	z = readNFiles(-1, c.saveReadFileDir);
 	printf("%d %d\n", z, errno);
 
 	//z = writeFile("fileDaLeggere3.txt", NULL);

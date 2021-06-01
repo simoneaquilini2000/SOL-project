@@ -715,6 +715,7 @@ int executeReadFile(MyRequest r){
 		if((l = writen(r.comm_socket, b, lung)) == -1)
 			return -1;
 
+		free(b);
 		//eventuale free(b) per liberare puntatore allocato sullo heap
 	}
 	return 0;
@@ -821,7 +822,7 @@ int executeAppendFile(MyRequest r){
 	memset(&f1, 0, sizeof(f1));
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
 
-	printf("Inizio richiesta APPEND_FILE\n");
+	//printf("Inizio richiesta APPEND_FILE\n");
 	pthread_mutex_lock(&fileCacheMutex);
 	int isPresent = findElement(fileCache, (void*)&f1);
 	pthread_mutex_unlock(&fileCacheMutex);
@@ -907,7 +908,7 @@ int executeAppendFile(MyRequest r){
 				toAppend->lastSucceedOp.optFlags = r.flags;
 				toAppend->lastSucceedOp.clientDescriptor = r.comm_socket;
 				pthread_mutex_lock(&updateStatsMutex);
-				serverStatistics.fileCacheActStorageSize += strlen(buf);
+				serverStatistics.fileCacheActStorageSize += l;
 				pthread_mutex_unlock(&updateStatsMutex);
 				replaceResult = replacingAlgorithm();
 				printf("Esito algoritmo di rimpiazzamento: %d\n", replaceResult);
@@ -1062,7 +1063,7 @@ int executeWriteFile(MyRequest r){
 							//printf("File content: %s\n", toWrite->content);
 							toWrite->content[buf_size] = '\0';
 							toWrite->dim = buf_size;
-							MyFile foo = *toWrite;
+							//MyFile foo = *toWrite;
 							//saveFile(foo, "./TestFileBinari");
 							toWrite->modified = 1;
 							toWrite->timestamp = time(NULL);

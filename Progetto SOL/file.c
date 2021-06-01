@@ -68,11 +68,13 @@ char* getFileNameFromPath(char path[]){
 		che mi rappresenterà il nome del file su cui opero
 	*/
 	while(token != NULL){
+		//printf("Ottengo token= %s\n", token);
 		ris = malloc(strlen(token) + 1);
 		memset(ris, 0, strlen(token));
-		strncpy(ris, token, strlen(token));
+		strcpy(ris, token);
 		dim = strlen(ris);
 		ris[dim] = '\0';
+		//printf("Ris= %s\n", ris);
 		token = strtok(NULL, "/");
 		if(token != NULL)
 			free(ris);
@@ -103,7 +105,7 @@ int saveFile(MyFile f, const char dirname[]){
 
 	char *fileName = getFileNameFromPath(f.filePath);
 
-	printf("WOW = %s\n", fileName);
+	//printf("WOW = %s\n", fileName);
 
 	int file_fd = open(fileName, O_RDWR | O_CREAT, 0700);
 
