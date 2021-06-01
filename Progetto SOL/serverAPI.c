@@ -208,10 +208,12 @@ int readFile(const char* pathname, void** buf, size_t* size){
 
 	*size = buf_size;
 	*buf = malloc(sizeof(char) * (buf_size + 1));
-	memset(buf, 0, (buf_size + 1));
 	if(*buf == NULL){
+		*size = 0;
 		return -1;
 	}
+	memset(*buf, 0, (buf_size + 1));
+	
 
 	if((l = readn(comm_socket_descriptor, *buf, *size)) == -1){
 		//printf("4\n");

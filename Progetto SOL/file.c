@@ -273,6 +273,7 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
 
     if(strcmp(token, pathBackup) == 0){ //non ho '/' quindi ho un solo token
         getcwd(absPath, len);
+		printf("BIB\n");
         if(strlen(absPath) + strlen(pathBackup) + 2 < len){
             strncat(absPath, "/", 1);
             strncat(absPath, pathBackup, strlen(pathBackup));
@@ -281,23 +282,29 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
     }
 
     while(token != NULL){
+		printf("Token= %s\n", token);
         fileName = malloc(strlen(token) + 1);
 		memset(fileName, 0, strlen(token) + 1);
         strncpy(fileName, token, strlen(token));
         //per ogni token cambio cwd nella cartella indicata dal token e mi salvo il precedente
-        if(chdir(token) == -1){
-            break;
-        }
         token = strtok(NULL, "/");
-        if(token != NULL)
+        if(token != NULL){
+			if(chdir(fileName) == -1){
+				printf("BAB\n");
+            	break;
+       	 	}
             free(fileName);
+		}
     }
     //una volta finito il ciclo metto in un buffer la cwd e ci appendo il nome del file(quello sarà il mio path assoluto)
     getcwd(absPath, len);
     if(strlen(absPath) + strlen(fileName) + 2 < len){
+		printf("BOB\n");
+		printf("Finora ho %s\n", absPath);
         strncat(absPath, "/", 1);
         strncat(absPath, fileName, strlen(fileName));
     }
 
-    chdir(currWorkDir); //torno a cwd iniziale
+    if(chdir(currWorkDir) == -1) //torno a cwd iniziale
+		perror("Errore cambio cwd!\n"); 
 }

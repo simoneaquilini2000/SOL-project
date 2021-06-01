@@ -54,6 +54,23 @@ int sendRequests(){
 					if(ris >= 0)
 						printf("\tByte letti: %d\n\n", readDataSize);
 				}
+				if(ris < 0)
+					break;
+				MyFile toSave;
+				memset(&toSave, 0, sizeof(toSave));
+				strcpy(toSave.filePath, actReq->request_content);
+				toSave.content = malloc(sizeof(char) * (readDataSize + 1));
+				if(toSave.content == NULL)
+					break;
+				strcpy(toSave.content, readDataBuffer);
+				toSave.dim = readDataSize;
+				toSave.content[toSave.dim] = '\0';
+				if(saveFile(toSave, c.saveReadFileDir) == -1){
+					printf("Errore salvataggio file!");
+				}
+				freeFile((void*)&toSave);
+				free(readDataBuffer);
+				readDataSize = 0;
 				break;
 			case READ_N_FILE:
 				ris = readNFiles(atoi(actReq->request_content), c.saveReadFileDir);
@@ -65,6 +82,18 @@ int sendRequests(){
 				break;
 			case REMOVE_FILE:
 				ris = removeFile(actReq->request_content);
+				if(c.printEnable){
+					printMainRequestInfo(ris, actReq);
+				}
+				break;
+			case OPEN_FILE:
+				ris = openFile(actReq->request_content, actReq->flags);
+				if(c.printEnable){
+					printMainRequestInfo(ris, actReq);
+				}
+				break;
+			case CLOSE_FILE:
+				ris = closeFile(actReq->request_content);
 				if(c.printEnable){
 					printMainRequestInfo(ris, actReq);
 				}
@@ -118,19 +147,22 @@ int main(int argc, char const *argv[]){
 
 	
 
-	//getToSendRequestsFromCmd(argc, argv);
+	getToSendRequestsFromCmd(argc, argv);
 	//printQueue(toSendRequestQueue);
 
 	//testFileNonTestuali("progetto_SOL_20-21.pdf");
 
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
 
-	//int result = sendRequests();
+	int result = sendRequests();
+
+	int x = closeConnection(c.socketName);
+	printf("Esito terminazione connesione: %d\n", x);
 	//toSendRequestQueue = getToSendRequestsFromCmd(argc, argv);
 
 	//printf("Connesso al server = %d\n errno = %d\n", a, errno);
 
-	z = openFile("fileDaLeggere.txt", O_CREAT);
+	/*z = openFile("fileDaLeggere.txt", O_CREAT);
 	printf("%d %d\n", z, errno);
 
 	z = openFile("fileDaLeggere2.txt", O_CREAT);
@@ -143,15 +175,15 @@ int main(int argc, char const *argv[]){
 	printf("%d %d\n", z, errno);
 
 	z = openFile("progetto_SOL_20-21.pdf", O_CREAT);
-	printf("%d %d\n", z, errno);
+	printf("%d %d\n", z, errno);*/
 
 	//z = openFile("fileDaLeggere.txt", O_CREAT);
 	//printf("%d %d\n", z, errno);
-	char buffer[1024];
+	//char buffer[1024];
 
 	//strcpy(buffer, "Ciao mamma!");
 
-	z = writeFile("fileDaLeggere.txt", NULL);
+	/*z = writeFile("fileDaLeggere.txt", NULL);
 	printf("%d %d\n", z, errno);
 
 	z = writeFile("progetto_SOL_20-21.pdf", NULL);
@@ -172,9 +204,8 @@ int main(int argc, char const *argv[]){
 	/*z = writeFile("fileDaLeggere.txt", NULL);
 	printf("%d %d\n", z, errno);*/
 	//srand(time(NULL));
-	sleep(2);
+	//sleep(2);
 
-	int x = closeConnection(c.socketName);
-	printf("Esito terminazione connesione: %d\n", x);
+	
 	return 0;
 }

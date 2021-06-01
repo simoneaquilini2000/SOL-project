@@ -628,6 +628,7 @@ int executeOpenFile(MyRequest r){
 			pthread_mutex_lock(&fileCacheMutex);
 			GenericNode *corr = fileCache.queue.head;
 			MyFile f1;
+			memset(&f1, 0, sizeof(f1));
 			strncpy(f1.filePath, r.request_content, strlen(r.request_content));
 
 			while(corr != NULL){
@@ -735,6 +736,7 @@ int executeCloseFile(MyRequest r){
 	pthread_mutex_unlock(&fileCacheMutex);
 	MyFile f1, *toRead;
 	int res = -1, l;
+	memset(&f1, 0, sizeof(f1));
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
 
 	while(corr != NULL){

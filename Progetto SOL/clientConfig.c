@@ -139,9 +139,9 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 		if(filePath == NULL && type == WRITE_FILE){
 			printf("Non ho trovato file %s\n", token);//errore nella richiesta che non verrà quindi spedita al server
 		}else{
-			if(type != WRITE_FILE) //se non devo mandare WRITE_FILE non necessariamente il file su cui opero deve stare sul mio FS
-				strncpy(r->request_content, token, strlen(token));
-			else //invio richiesta WRITE_FILE con un path assoluto come target
+			//if(type != WRITE_FILE) //se non devo mandare WRITE_FILE non necessariamente il file su cui opero deve stare sul mio FS
+			//	strncpy(r->request_content, token, strlen(token));
+			//else //invio richiesta WRITE_FILE con un path assoluto come target
 				strncpy(r->request_content, buf, strlen(buf));
 			if(push(&toSendRequestQueue, (void*)r) == -1){
 				perror("errore push!");

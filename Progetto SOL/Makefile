@@ -27,7 +27,7 @@ fileStorageClientTemp: $(CLIENT_DEPS)
 
 fileStorageClient: $(CLIENT_DEPS)
 				  $(CC) $(CFLAGS) $@ $^
-				  ./$@ -f $(SOCKNAME) -p -t 200 -d ./Test_Bash_Safe \
+				  ./$@ -f $(SOCKNAME) -p -t 1000 -d ./Test_Bash_Safe \
 				  -i ./Test_Bash_Safe/FilesDaCreare,0 -w ./Test_Bash_Safe/FilesDaCreare,2 \
 				  -C ./Test_Bash_Safe/FilesDaCreare/fileDaCreare0.txt \
-				  -o /Test_Bash_Safe/FilesDaCreare/fileDaCreare0.txt -R0 
+				  -o ./Test_Bash_Safe/FilesDaCreare/fileDaCreare0.txt -R0 
