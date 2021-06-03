@@ -167,7 +167,7 @@ int main(int argc, char const *argv[]){
 
 	msleep(c.requestInterval);
 
-	/*ris = writeFile("fileDaLeggere.txt", NULL);
+	ris = writeFile("fileDaLeggere.txt", NULL);
 	printf("%d %d\n", ris, errno);
 
 	msleep(c.requestInterval);
@@ -193,7 +193,7 @@ int main(int argc, char const *argv[]){
 	msleep(c.requestInterval);
 
 	ris = removeFile("fileDaLeggere.txt");
-	printf("%d %d\n", ris, errno);*/
+	printf("%d %d\n", ris, errno);
 
 	msleep(c.requestInterval);
 

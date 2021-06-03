@@ -51,7 +51,6 @@ static GenericNode* createNode(void *ptr){
 	if(x == NULL)
 		return NULL;
 	x->info = ptr; //assegno il puntatore alla struttura al campo info del nodo
-	//memcpy(x->info, ptr, sizeof(*ptr));
 	x->next = NULL;
 
 	return x;
@@ -90,7 +89,7 @@ void* pop(GenericQueue *q){
 		q->queue.head = q->queue.head->next;
 	}
 
-	//free(result);
+	free(result);
 	q->size--;
 
 	return ris;

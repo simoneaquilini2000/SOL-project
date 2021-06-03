@@ -155,7 +155,7 @@ int updateActiveFds(fd_set set, int fd_num){
 */
 static void* managerThreadActivity(void* args){
 	int fd_num = 0, index, l, descToAdd, sig_num;
-	MyRequest toAdd;
+	MyRequest toAdd, *req;
 	MyDescriptor newConnDesc;
 	fd_set rdset;
 	sigset_t set;
@@ -332,9 +332,9 @@ static void* managerThreadActivity(void* args){
 									FD_CLR(index, &active_fds); //sospendo l'ascolto del manager su tale descrittore finchè il worker non avrà finito il suo lavoro
 									fd_num = updateActiveFds(active_fds, fd_num + 1);
 									pthread_mutex_unlock(&connectionsQueueMutex);
-									MyRequest *req = malloc(sizeof(MyRequest));
+									req = malloc(sizeof(MyRequest));
 									memset(req, 0, sizeof(MyRequest));
-									memcpy(req, &toAdd, sizeof(MyRequest)); //copio la richiesta letta all indirizzo di req
+									memcpy(req, &toAdd, sizeof(toAdd)); //copio la richiesta letta all indirizzo di req
 									pthread_mutex_lock(&requestsQueueMutex);
 									if(push(&requests, (void *) req) == -1){
 										free(req);
@@ -394,7 +394,7 @@ int verifyReplaceCondition(RequestType r, int data_amount){
 /*
 	Verifica che ci siano le condizioni per eliminare file dalla cache
 	e permettere operazioni di creazione, scrittura od estensione(
-	quindi verrano considerate solo richieste di tipo OPEN_FILE,
+	verrano considerate solo richieste di tipo OPEN_FILE,
 	WRITE_FILE ed APPEND_FILE in quanto le altre non prevedono
 	l'incremento né della size né della storage size attuale della
 	cache).
@@ -1193,8 +1193,6 @@ int main(int argc, char const *argv[]){
 		perror("Path del file di configurazione deve essere passato da linea di comando!");
 		exit(EXIT_FAILURE);
 	}
-
-	printf("Sizeof richiesta = %d\n", sizeof(MyRequest));
 
 	s = startConfig(argv[1]); //parsing del file di config
 	printConfig(s);
