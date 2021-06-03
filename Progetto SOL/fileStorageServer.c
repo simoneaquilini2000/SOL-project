@@ -1,23 +1,3 @@
-/*
-	TO DO:
-	-gestione segnali:
-		SIGINT/SIGQUIT -> avrò flag corrispondente e quando questo diventa 1,
-		signal_broadcast per svegliare i workers(che controlleranno tale condizione e
-		nel caso terminano) e pipe, ascoltata dal manager, che se vi legge
-		tale segnale termina il manager e fa la free delle strutture = FATTO
-
-		SIGHUP -> flag corrispondente inviato al manager che terminerà la sua esecuzione
-		solo quando la lista dei descrittori di connessioni sarà vuota e, sulla base
-		di tale condizione, sveglierà i workers con una signal_broadcast e setterà
-		un flag apposito per far sì che al loro risveglio i workers terminino normalmente.
-		Successivamente farà la free delle strutture = IN CORSO, 50%
-		(funziona se quando arriva SIGHUP, non ho client connessi, altrimenti va in deadlock).
-
-	TO DIG INTO:
-		- perchè dopo che arriva SIGHUP ed il client termina la read del manager si blocca
-		e non riceve numeroDiBytesLetti pari a 0.
-*/
-
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
@@ -123,11 +103,10 @@ void freeStructures(){
 	Funzione eseguita dal thread gestore dei segnali:
 		-Previo mascheramento di SIGINT,SIGHUP e SIGQUIT,
 		si mette in attesa di tali segnali con sigwait.
-		-Chiude in entrambi i casi il listen socket.
-		-Se riceve SIGHUP, 
-		-Se riceve SIGINT/SIGQUIT chiude la pipe
-		verso il manager, libera le code sopracitate,
-		stampa su stdout le statistiche del server ed esce
+		- Una volta ricevuto uno di questi segnali, ne 
+		scrive il codice numerico corrispondente in una pipe
+		ascoltata dal manager che prenderà le dovute
+		contromisure.
 */
 static void* signalHandlerActivity(void* args){
 	int sig_num;
@@ -144,10 +123,10 @@ static void* signalHandlerActivity(void* args){
 	//printf("Signal Handler: Ho ricevuto segnale %d\n", sig_num);
 
 	pthread_mutex_lock(&signalPipeMutex);
-		if((l = writen(signalPipe[1], &sig_num, sizeof(int))) == -1){
-			perror("Errore scrittura su pipe!\n");
-			exit(EXIT_FAILURE);
-		}
+	if((l = writen(signalPipe[1], &sig_num, sizeof(int))) == -1){
+		perror("Errore scrittura su pipe!\n");
+		exit(EXIT_FAILURE);
+	}
 	pthread_mutex_unlock(&signalPipeMutex);
 	printf("Signal Handler: ho terminato la mia attività\n");
 	return (void*)NULL;
@@ -177,6 +156,7 @@ int updateActiveFds(fd_set set, int fd_num){
 static void* managerThreadActivity(void* args){
 	int fd_num = 0, index, l, descToAdd, sig_num;
 	MyRequest toAdd;
+	MyDescriptor newConnDesc;
 	fd_set rdset;
 	sigset_t set;
 	struct sockaddr_un socket_address;
@@ -237,12 +217,16 @@ static void* managerThreadActivity(void* args){
 				//pthread_mutex_unlock(&connectionsQueueMutex);
 				if(FD_ISSET(index, &rdset)){ //se tale descrittore è pronto esaudisco la richiesta
 					if(index == lfd){ //listen socket pronto(l'accept non si blocca)
-						MyDescriptor *newConn = malloc(sizeof(MyDescriptor));
+						//memset(&newConn, 0, sizeof(newConn));
+						
+						MyDescriptor *newConn = (MyDescriptor*) malloc(sizeof(MyDescriptor));
 						memset(newConn, 0, sizeof(*newConn));
-						newConn->cfd = accept(lfd, NULL, 0);
+						memset(&newConnDesc, 0, sizeof(newConnDesc));
+						newConnDesc.cfd = accept(lfd, NULL, 0);
 						pthread_mutex_lock(&connectionsQueueMutex);
-						FD_SET(newConn->cfd, &active_fds);
-						if(newConn->cfd > fd_num) fd_num = newConn->cfd;
+						FD_SET(newConnDesc.cfd, &active_fds);
+						if(newConnDesc.cfd > fd_num) fd_num = newConnDesc.cfd;
+						memcpy(newConn, &newConnDesc, sizeof(newConnDesc));
 						int pushRes = push(&connections, (void *) newConn);
 						pthread_mutex_unlock(&connectionsQueueMutex);
 						if(pushRes == -1){ //se l'inserimento fallisce ho errore fatale
@@ -350,9 +334,10 @@ static void* managerThreadActivity(void* args){
 									pthread_mutex_unlock(&connectionsQueueMutex);
 									MyRequest *req = malloc(sizeof(MyRequest));
 									memset(req, 0, sizeof(MyRequest));
-									req = memcpy(req, &toAdd, sizeof(MyRequest)); //copio la richiesta letta all indirizzo di req
+									memcpy(req, &toAdd, sizeof(MyRequest)); //copio la richiesta letta all indirizzo di req
 									pthread_mutex_lock(&requestsQueueMutex);
 									if(push(&requests, (void *) req) == -1){
+										free(req);
 										pthread_mutex_unlock(&requestsQueueMutex);
 										perror("Errore push!");
 										exit(EXIT_FAILURE);
@@ -664,8 +649,11 @@ int executeOpenFile(MyRequest r){
 	facendo precedere la lunghezza del messaggio
 */
 int executeReadFile(MyRequest r){
+	MyFile f1;
+	memset(&f1, 0, sizeof(f1));
+	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
 	pthread_mutex_lock(&fileCacheMutex);
-	int risFind = findElement(fileCache, r.request_content);
+	int risFind = findElement(fileCache, (void*)&f1);
 	pthread_mutex_unlock(&fileCacheMutex);
 
 	char *b;
@@ -681,8 +669,8 @@ int executeReadFile(MyRequest r){
 
 	pthread_mutex_lock(&fileCacheMutex);
 	GenericNode *corr = fileCache.queue.head;
-	MyFile f1, *toRead;
-	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
+	MyFile *toRead;
+	
 
 	while(corr != NULL){
 		if(fileCache.comparison(corr->info, (void*)&f1) == 1){
@@ -778,6 +766,7 @@ int executeRemoveFile(MyRequest r){
 	pthread_mutex_unlock(&fileCacheMutex);
 	MyFile f1, *toDel;
 	int res = -1, l;
+	memset(&f1, 0, sizeof(f1));
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
 
 	while(corr != NULL){
@@ -1179,7 +1168,11 @@ static void* workerThreadActivity(void* args){
 			pthread_mutex_unlock(&requestsQueueMutex);
 			break;
 		}
+		//printf("Stampo coda richieste attuale:\n");
+		//printQueue(requests);
 		p = (MyRequest*) pop(&requests); //sono sicuro che p != NULL
+		//printf("Stampo coda richieste dopo POP:\n");
+		//printQueue(requests);
 		pthread_mutex_unlock(&requestsQueueMutex);
 		executeRequest(*p);
 		commSocketGiveBack(p->comm_socket);
@@ -1200,6 +1193,8 @@ int main(int argc, char const *argv[]){
 		perror("Path del file di configurazione deve essere passato da linea di comando!");
 		exit(EXIT_FAILURE);
 	}
+
+	printf("Sizeof richiesta = %d\n", sizeof(MyRequest));
 
 	s = startConfig(argv[1]); //parsing del file di config
 	printConfig(s);

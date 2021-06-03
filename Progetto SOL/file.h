@@ -39,7 +39,7 @@ int saveFile(MyFile, const char[]);
 /*
 	funzione che restituisce, nel secondo parametro,
 	l'intero contenuto del file specificato come primo parametro.
-	Ritorna NULL in caso di errore
+	Ritorna -1 in caso di errore, il numero di byte letti altrimenti
 */
 int readFileContent(const char *, char **);
 

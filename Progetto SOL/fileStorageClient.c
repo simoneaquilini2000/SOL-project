@@ -154,7 +154,48 @@ int main(int argc, char const *argv[]){
 
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
 
-	int result = sendRequests();
+	//int result = sendRequests();
+
+	int ris;
+	char *buf;
+	size_t size;
+
+	msleep(c.requestInterval);
+
+	ris = openFile("fileDaLeggere.txt", O_CREAT);
+	printf("%d %d\n", ris, errno);
+
+	msleep(c.requestInterval);
+
+	/*ris = writeFile("fileDaLeggere.txt", NULL);
+	printf("%d %d\n", ris, errno);
+
+	msleep(c.requestInterval);
+
+	ris = readFile("fileDaLeggere.txt", &buf, &size);
+	printf("%d %d\n", ris, errno);
+
+	msleep(c.requestInterval);
+
+	ris = appendToFile("fileDaLeggere.txt", buf, strlen(buf), NULL);
+	printf("%d %d\n", ris, errno);
+
+	msleep(c.requestInterval);
+
+	ris = readNFiles(1, c.saveReadFileDir);
+	printf("%d %d\n", ris, errno);
+
+	msleep(c.requestInterval);
+
+	ris = closeFile("fileDaLeggere.txt");
+	printf("%d %d\n", ris, errno);
+
+	msleep(c.requestInterval);
+
+	ris = removeFile("fileDaLeggere.txt");
+	printf("%d %d\n", ris, errno);*/
+
+	msleep(c.requestInterval);
 
 	int x = closeConnection(c.socketName);
 	printf("Esito terminazione connesione: %d\n", x);

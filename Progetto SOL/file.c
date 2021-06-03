@@ -35,7 +35,7 @@ void filePrint(void* info){
 	printf("FilePath: %s\n", f.filePath);
 	printf("Dimension: %d\n", f.dim);
 	if(f.content == NULL)
-		printf("Bad content\n");
+		printf("Content(NULL)\n");
 	else
 		printf("Content: %s\n", f.content);
 	printf("Timestamp: %s\n", buff);
@@ -53,7 +53,7 @@ void freeFile(void* s){
 
 	if(f->content != NULL)
 		free(f->content);
-	//free(f); 
+	free(f); 
 }
 
 char* getFileNameFromPath(char path[]){
@@ -152,7 +152,7 @@ int saveFile(MyFile f, const char dirname[]){
 
 int readFileContent(const char *pathname, char **fileContent){
 	if(pathname == NULL)
-		return NULL;
+		return -1;
 
 	char absPath[PATH_MAX];
 	char recBuf[1024];
@@ -252,8 +252,10 @@ int readFileContent(const char *pathname, char **fileContent){
 
 //traduzione da path relativo ad assoluto
 void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
-    if(pathname == NULL || strcmp(pathname, "") == 0)
+    if(pathname == NULL || strcmp(pathname, "") == 0){
+		strcpy(absPath, ""); //errore sui parametri di input
         return;
+	}
     char currWorkDir[1024], pathBackup[1024];
     getcwd(currWorkDir, 1024);
     strncpy(pathBackup, pathname, strlen(pathname));
@@ -273,16 +275,17 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
 
     if(strcmp(token, pathBackup) == 0){ //non ho '/' quindi ho un solo token
         getcwd(absPath, len);
-		printf("BIB\n");
+		//printf("BIB\n");
         if(strlen(absPath) + strlen(pathBackup) + 2 < len){
-            strncat(absPath, "/", 1);
+            strcat(absPath, "/");
             strncat(absPath, pathBackup, strlen(pathBackup));
-        }
+        }else
+			strcpy(absPath, ""); //errore ho sforato il massimo spazio disponibile
         return;
     }
 
     while(token != NULL){
-		printf("Token= %s\n", token);
+		//printf("Token= %s\n", token);
         fileName = malloc(strlen(token) + 1);
 		memset(fileName, 0, strlen(token) + 1);
         strncpy(fileName, token, strlen(token));
@@ -290,8 +293,13 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
         token = strtok(NULL, "/");
         if(token != NULL){
 			if(chdir(fileName) == -1){
-				printf("BAB\n");
-            	break;
+				//printf("BAB\n");
+				strcpy(absPath, "");
+				if(chdir(currWorkDir) == -1){
+					perror("Errore fatale in cambio di directory!\n");
+					exit(EXIT_FAILURE);
+				}
+            	return;
        	 	}
             free(fileName);
 		}
@@ -299,12 +307,16 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
     //una volta finito il ciclo metto in un buffer la cwd e ci appendo il nome del file(quello sarà il mio path assoluto)
     getcwd(absPath, len);
     if(strlen(absPath) + strlen(fileName) + 2 < len){
-		printf("BOB\n");
-		printf("Finora ho %s\n", absPath);
-        strncat(absPath, "/", 1);
+		//printf("BOB\n");
+		//printf("Finora ho %s\n", absPath);
+        strcat(absPath, "/");
         strncat(absPath, fileName, strlen(fileName));
-    }
+    }else{
+		strcpy(absPath, ""); //errore, path troppo lungo
+	}
 
-    if(chdir(currWorkDir) == -1) //torno a cwd iniziale
-		perror("Errore cambio cwd!\n"); 
+    if(chdir(currWorkDir) == -1){ //torno a cwd iniziale
+		perror("Errore cambio cwd!\n");
+		exit(EXIT_FAILURE);
+	} 
 }

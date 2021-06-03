@@ -46,11 +46,12 @@ GenericQueue createQueue(int (*comp) (void*, void*), void (*print) (void*), void
 }
 
 static GenericNode* createNode(void *ptr){
-	GenericNode *x = malloc(sizeof(GenericNode));
+	GenericNode *x = (GenericNode*) malloc(sizeof(GenericNode));
 	memset(x, 0, sizeof(GenericNode));
 	if(x == NULL)
 		return NULL;
 	x->info = ptr; //assegno il puntatore alla struttura al campo info del nodo
+	//memcpy(x->info, ptr, sizeof(*ptr));
 	x->next = NULL;
 
 	return x;
@@ -75,7 +76,7 @@ int push(GenericQueue *q, void *ptr){
 
 void* pop(GenericQueue *q){
 	if(isEmpty(*q) == 1){ //se la coda è vuota la pop restituisce NULL
-		printf("Ciao\n");
+		printf("Lista vuota: operazione di POP impossibile\n");
 		return NULL;
 	}
 

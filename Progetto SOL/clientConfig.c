@@ -10,7 +10,7 @@
 #include<fcntl.h>
 #include "clientConfig.h"
 #include "generic_queue.h"
-//#include "file.h"
+#include "file.h"
 #include "request.h"
 #include "utility.h"
 
@@ -126,6 +126,7 @@ void printConfigInfo(ClientConfigInfo c){
 int buildInsertRequest(int type, char *arg, int request_flags){
 	char *token = strtok(arg, ",");
 	char buf[PATH_MAX];
+	int ris = 0;
 	char *fileToFind;
 	char *filePath;
 
@@ -135,19 +136,37 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 		r->type = type;
 		r->flags = request_flags;
 		//fileToFind = getFileNameFromPath(token);
-		filePath = realpath(token, buf); //ottengo path assoluto dato quello relativo
-		if(filePath == NULL && type == WRITE_FILE){
-			printf("Non ho trovato file %s\n", token);//errore nella richiesta che non verrà quindi spedita al server
+		memset(buf, 0, sizeof(buf));
+
+		/*
+			Se devo scrivere un file, in quanto sarà stato lo stesso client
+			a crearlo ed aprirlo; il contenuto da scrivere dovrà
+			essere presente nel file system del client.
+			In caso contrario, ciò non è strettamente necessario
+			quindi va semplicemente tradotto il path relativo
+			in assoluto.
+		*/
+		if(type == WRITE_FILE){
+			filePath = realpath(token, buf); //ottengo path assoluto dato quello relativo
+			if(filePath == NULL){
+				printf("Non ho trovato file %s\n", token);
+				ris = -1; //flag con cui segnalo l'errore e tale richiesta non verrà spedita
+			}
 		}else{
-			//if(type != WRITE_FILE) //se non devo mandare WRITE_FILE non necessariamente il file su cui opero deve stare sul mio FS
-			//	strncpy(r->request_content, token, strlen(token));
-			//else //invio richiesta WRITE_FILE con un path assoluto come target
-				strncpy(r->request_content, buf, strlen(buf));
+			getAbsPathFromRelPath(token, buf, PATH_MAX);
+			if(strcmp(buf, "") == 0)
+				ris = -1;
+		}
+
+		if(ris == 0){
+			strncpy(r->request_content, buf, strlen(buf));
 			if(push(&toSendRequestQueue, (void*)r) == -1){
 				perror("errore push!");
 				exit(EXIT_FAILURE);
 			}
 		}
+		
+		ris = 0;
 		token = strtok(NULL, ",");
 	}
 	return 0;

@@ -18,5 +18,5 @@ void descriptorPrint(void* c){
 void freeDescriptor(void* c){
 	MyDescriptor *f = (MyDescriptor*)c;
 
-	//free(f);
+	free(f);
 }
