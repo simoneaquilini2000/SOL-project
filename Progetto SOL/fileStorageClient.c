@@ -21,7 +21,7 @@ GenericQueue toSendRequestQueue; //coda di richieste da dare al server
 
 void printMainRequestInfo(int ris, MyRequest *actReq){
 	printf("Stampo informazioni post esecuzione della richiesta:\n");
-	printf("\tTipo operazione: %d\n", actReq->type);
+	printf("\tTipo operazione(flags): %d(%d)\n", actReq->type, actReq->flags);
 	printf("\tFile di riferimento: %s\n", actReq->request_content);
 	printf("\tEsito: %d\n", ris);
 	if(ris < 0)
@@ -41,19 +41,23 @@ int sendRequests(){
 		
 		switch(actReq->type){
 			case WRITE_FILE:
-				//ris = openFile(actReq->request_content, O_CREAT); 
+				//ris = openFile(actReq->request_content, O_CREAT);
+				printf("Inizio richiesta WRITE FILE\n"); 
 				ris = writeFile(actReq->request_content, NULL);
 				if(c.printEnable){
 					printMainRequestInfo(ris, actReq);
 				}
+				printf("Fine richiesta WRITE FILE\n");
 				break;
 			case READ_FILE:
+				printf("Inizio richiesta READ FILE\n");
 				ris = readFile(actReq->request_content, (void**)&readDataBuffer, &readDataSize);
 				if(c.printEnable){
 					printMainRequestInfo(ris, actReq);
 					if(ris >= 0)
 						printf("\tByte letti: %d\n\n", readDataSize);
 				}
+				printf("Fine richiesta READ FILE\n");
 				if(ris < 0)
 					break;
 				MyFile toSave;
@@ -73,30 +77,38 @@ int sendRequests(){
 				readDataSize = 0;
 				break;
 			case READ_N_FILE:
+				printf("Inizio richiesta READ_N_FILE\n");
 				ris = readNFiles(atoi(actReq->request_content), c.saveReadFileDir);
 				if(c.printEnable){
 					printMainRequestInfo(ris, actReq);
 					if(ris >= 0)
 						printf("\tNumero di file letti: %d\n\n", ris);
 				}
+				printf("Fine richiesta READ_N_FILE\n");
 				break;
 			case REMOVE_FILE:
+				printf("Inizio richiesta REMOVE FILE\n");
 				ris = removeFile(actReq->request_content);
 				if(c.printEnable){
 					printMainRequestInfo(ris, actReq);
 				}
+				printf("Fine richiesta REMOVE FILE\n");
 				break;
 			case OPEN_FILE:
+				printf("Inizio richiesta OPEN FILE\n");
 				ris = openFile(actReq->request_content, actReq->flags);
 				if(c.printEnable){
 					printMainRequestInfo(ris, actReq);
 				}
+				printf("Fine richiesta OPEN FILE\n");
 				break;
 			case CLOSE_FILE:
+				printf("Inizio richiesta CLOSE FILE\n");
 				ris = closeFile(actReq->request_content);
 				if(c.printEnable){
 					printMainRequestInfo(ris, actReq);
 				}
+				printf("Fine richiesta CLOSE FILE\n");
 				break;
 			default: printf("Per mandare altri tipi di richieste, usare esplicitamente \
 				la server API\n");
@@ -154,9 +166,9 @@ int main(int argc, char const *argv[]){
 
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
 
-	//int result = sendRequests();
+	int result = sendRequests();
 
-	int ris;
+	/*int ris;
 	char *buf;
 	size_t size;
 
@@ -195,7 +207,7 @@ int main(int argc, char const *argv[]){
 	ris = removeFile("fileDaLeggere.txt");
 	printf("%d %d\n", ris, errno);
 
-	msleep(c.requestInterval);
+	msleep(c.requestInterval);*/
 
 	int x = closeConnection(c.socketName);
 	printf("Esito terminazione connesione: %d\n", x);

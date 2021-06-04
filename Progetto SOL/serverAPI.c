@@ -95,7 +95,9 @@ int closeConnection(const char* sockName){
 
 int openFile(const char* pathname, int flags){
 	if(flags != O_CREAT && flags != 0){
-		perror("Invalid flags: it can be just O_CREAT(if the file doesn't exist in the cache it will be created) or 0(no flags)\n");
+		perror("Invalid flags: it can be just O_CREAT \
+			(if the file doesn't exist in the cache it will \
+			 be created) or 0(no flags)\n");
 		errno = EINVAL;
 		return -1;
 	}
@@ -144,7 +146,7 @@ int openFile(const char* pathname, int flags){
 			errno = ENOENT; //file inesistente (flag O_CREAT non specificato)
 			return -1;
 		case -3:
-			errno = EPERM; //non posso aprire un file già aperto
+			errno = EPERM; //non posso aprire un file già aperto(flag O_CREAT non specificato)
 			return -1;
 		case -4:
 			errno = ENOSPC; //l'operazione ha causato il fallimento dell'algoritmo di rimpiazzamento non posso liberare memoria in filecache

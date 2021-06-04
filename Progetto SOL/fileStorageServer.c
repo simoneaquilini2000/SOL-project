@@ -410,14 +410,16 @@ int verifyReplacePossibility(RequestType t, char requestTarget[], int dataAmount
 		*/
 		pthread_mutex_lock(&fileCacheMutex);
 		GenericNode *corr = fileCache.queue.head;
-		pthread_mutex_unlock(&fileCacheMutex);
 
 		while(corr != NULL){
 			MyFile *f = (MyFile*) corr->info;
-			if(f->modified == 1)
+			if(f->modified == 1){
+				pthread_mutex_unlock(&fileCacheMutex);
 				return 1;
+			}
 			corr = corr->next;
 		}
+		pthread_mutex_unlock(&fileCacheMutex);
 		return 0;
 	}
 	
@@ -430,14 +432,13 @@ int verifyReplacePossibility(RequestType t, char requestTarget[], int dataAmount
 			una serie di file(precedentemente modificati) t.c. la loro eliminazione mi libera spazio
 			sufficiente per la scrittura. Ovviamente in tale serie non ci deve essere il file su cui sto operando
 		*/
-		pthread_mutex_lock(&fileCacheMutex);
-		GenericNode *corr = fileCache.queue.head;
-		pthread_mutex_unlock(&fileCacheMutex);
 		pthread_mutex_lock(&updateStatsMutex);
 		int actCacheStorageSize = serverStatistics.fileCacheActStorageSize;
 		int maxCacheStorageSize = s.maxStorageSpace;
 		pthread_mutex_unlock(&updateStatsMutex);
 		int victimFilesDimSum = 0;
+		pthread_mutex_lock(&fileCacheMutex);
+		GenericNode *corr = fileCache.queue.head;
 
 		while(corr != NULL){
 			MyFile *f = (MyFile*) corr->info;
@@ -445,6 +446,7 @@ int verifyReplacePossibility(RequestType t, char requestTarget[], int dataAmount
 				victimFilesDimSum += f->dim;
 			corr = corr->next;
 		}
+		pthread_mutex_unlock(&fileCacheMutex);
 		if(actCacheStorageSize + dataAmount - victimFilesDimSum <= maxCacheStorageSize)
 			return 1;
 		return 0;
@@ -502,8 +504,10 @@ int replacingAlgorithm(){
 	while(i < initCacheSize && replaceCondition == 1){
 		corrBackup = corr->next;
 		MyFile *toDel = (MyFile*) corr->info;
-		if(toDel == NULL)
-			break;
+		if(toDel == NULL){
+			pthread_mutex_unlock(&fileCacheMutex);
+			return -1;
+		}
 		if(toDel->modified == 1){
 			//printf("Ho selezionato come file vittima: %s\n", toDel->filePath);
 			pthread_mutex_lock(&updateStatsMutex);
@@ -580,23 +584,36 @@ int executeOpenFile(MyRequest r){
 				p->isLocked = 0;
 				p->modified = 0;
 				strncpy(p->filePath, r.request_content, strlen(r.request_content));
-				if(strlen(p->filePath) < 4096)
-					p->filePath[strlen(r.request_content)] = '\0';
+				p->filePath[strlen(r.request_content)] = '\0';
 				p->content = NULL;
 				//clearBuffer(p->content, 25);
 				//memset(p->content, 0, 25 * sizeof(char));
 				p->dim = 0;
+				/*
+					Aggiorno già l'ultima operazione effettuata con successo
+					in quanto se la push fallisse vorrebbe dire che ho un problema
+					legato alla memoria, il quale causerebbe un errore fatale
+				*/
 				p->lastSucceedOp.opType = r.type;
 				p->lastSucceedOp.optFlags = r.flags;
 				p->lastSucceedOp.clientDescriptor = r.comm_socket;
 				
 				//memcpy(p, &f, sizeof(MyFile));
 				pthread_mutex_lock(&fileCacheMutex);
-				push(&fileCache, (void*)p);
+				if(push(&fileCache, (void*)p) == -1){
+					perror("Errore push!\n");
+					exit(EXIT_FAILURE);
+				}
 				//printf("Ho aggiunto file: stampo la nuova cache\n");
 				//printQueue(fileCache);
 				pthread_mutex_unlock(&fileCacheMutex);
 				replaceResult = replacingAlgorithm();
+				if(replaceResult == -1){
+					perror("Nell'esecuzione dell'algoritmo di \
+					rimpiazzamento si è verificata una violazione \
+					dell'integrità della cache!\n"); //problema in ME ha creato inconsistenza nella cache
+					exit(EXIT_FAILURE); //errore fatale
+				}
 				printf("Esito algoritmo di rimpiazzamento: %d\n", replaceResult);
 				if(replaceResult == 1){ //dopo inserimento in coda ristabilisco integrità del sistema
 					//non ho rimosso files quindi aggiorno eventualmente maxSize della cache
@@ -719,18 +736,17 @@ int executeReadFile(MyRequest r){
 	e non è già chiuso, e resetta il flag modified del file
 */
 int executeCloseFile(MyRequest r){
-	pthread_mutex_lock(&fileCacheMutex);
-	GenericNode *corr = fileCache.queue.head;
-	pthread_mutex_unlock(&fileCacheMutex);
 	MyFile f1, *toRead;
 	int res = -1, l;
 	memset(&f1, 0, sizeof(f1));
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
+	pthread_mutex_lock(&fileCacheMutex);
+	GenericNode *corr = fileCache.queue.head;
 
 	while(corr != NULL){
-		pthread_mutex_lock(&fileCacheMutex);
+		//pthread_mutex_lock(&fileCacheMutex);
 		if(fileCache.comparison(corr->info, (void*)&f1) == 1){
-			pthread_mutex_unlock(&fileCacheMutex);
+			//pthread_mutex_unlock(&fileCacheMutex);
 			toRead = (MyFile*)(corr->info);
 			if(toRead->isOpen == 0){
 				res = -2;
@@ -743,9 +759,9 @@ int executeCloseFile(MyRequest r){
 			}
 			break;
 		}
-		pthread_mutex_unlock(&fileCacheMutex);
 		corr = corr->next;
 	}
+	pthread_mutex_unlock(&fileCacheMutex);
 	
 
 	if((l = writen(r.comm_socket, &res, sizeof(int))) == -1)
@@ -761,18 +777,17 @@ int executeCloseFile(MyRequest r){
 	Rimuove il file cercato se presente ed in stato di locked(non implementato, quindi fallisce sempre)
 */
 int executeRemoveFile(MyRequest r){
-	pthread_mutex_lock(&fileCacheMutex);
-	GenericNode *corr = fileCache.queue.head;
-	pthread_mutex_unlock(&fileCacheMutex);
 	MyFile f1, *toDel;
 	int res = -1, l;
 	memset(&f1, 0, sizeof(f1));
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
+	pthread_mutex_lock(&fileCacheMutex);
+	GenericNode *corr = fileCache.queue.head;
 
 	while(corr != NULL){
-		pthread_mutex_lock(&fileCacheMutex);
+		//pthread_mutex_lock(&fileCacheMutex);
 		if(fileCache.comparison(corr->info, (void*)&f1) == 1){
-			pthread_mutex_unlock(&fileCacheMutex);
+			//pthread_mutex_unlock(&fileCacheMutex);
 			toDel = (MyFile*)(corr->info);
 			if(toDel->isLocked == 0){
 				res = -2;
@@ -781,15 +796,15 @@ int executeRemoveFile(MyRequest r){
 				pthread_mutex_lock(&updateStatsMutex);
 				serverStatistics.fileCacheActStorageSize -= toDel->dim; //aggiornamento storageSize
 				pthread_mutex_unlock(&updateStatsMutex);
-				pthread_mutex_lock(&fileCacheMutex);
+				//pthread_mutex_lock(&fileCacheMutex);
 				deleteElement(&fileCache, (void*) &f1); //implicito il decremento della cardinalità della coda
-				pthread_mutex_unlock(&fileCacheMutex);
+				//pthread_mutex_unlock(&fileCacheMutex);
 			}
 			break;
 		}
-		pthread_mutex_unlock(&fileCacheMutex);
 		corr = corr->next;
 	}
+	pthread_mutex_unlock(&fileCacheMutex);
 
 	if((l = writen(r.comm_socket, &res, sizeof(int))) == -1)
 		return -1;
@@ -812,8 +827,6 @@ int executeAppendFile(MyRequest r){
 
 	memset(&f1, 0, sizeof(f1));
 	strncpy(f1.filePath, r.request_content, strlen(r.request_content));
-
-	//printf("Inizio richiesta APPEND_FILE\n");
 	pthread_mutex_lock(&fileCacheMutex);
 	int isPresent = findElement(fileCache, (void*)&f1);
 	pthread_mutex_unlock(&fileCacheMutex);
@@ -861,13 +874,12 @@ int executeAppendFile(MyRequest r){
 
 	pthread_mutex_lock(&fileCacheMutex);
 	GenericNode* corr = fileCache.queue.head;
-	pthread_mutex_unlock(&fileCacheMutex);
 
 	while(corr != NULL){
-		pthread_mutex_lock(&fileCacheMutex);
+		//pthread_mutex_lock(&fileCacheMutex);
 		if(fileCache.comparison(corr->info, (void*)&f1) == 1){
 			MyFile *toAppend = (MyFile*) corr->info;
-			pthread_mutex_unlock(&fileCacheMutex);
+			//pthread_mutex_unlock(&fileCacheMutex);
 			if(toAppend->isOpen == 0){
 				res = -2;
 			}else{
@@ -902,6 +914,10 @@ int executeAppendFile(MyRequest r){
 				serverStatistics.fileCacheActStorageSize += l;
 				pthread_mutex_unlock(&updateStatsMutex);
 				replaceResult = replacingAlgorithm();
+				if(replaceResult == -1){
+					perror("Rilevata inconsistenza nella cache\n"); //analogo alla openFile
+					exit(EXIT_FAILURE);
+				}
 				printf("Esito algoritmo di rimpiazzamento: %d\n", replaceResult);
 				if(replaceResult == 1){
 					//non ho rimosso files, procedo con aggiornamento maxStorageSize
@@ -913,9 +929,9 @@ int executeAppendFile(MyRequest r){
 			}
 			break;
 		}
-		pthread_mutex_unlock(&fileCacheMutex);
 		corr = corr->next;
-	}	
+	}
+	pthread_mutex_unlock(&fileCacheMutex);	
 
 	if((l = writen(r.comm_socket, &res, sizeof(int))) == -1){
 		//printf("Fine richiesta APPEND_FILE con INsuccesso\n");
@@ -945,14 +961,14 @@ int executeReadNFile(MyRequest r){
 	pthread_mutex_lock(&fileCacheMutex);
 	//se N <= 0 o più grande della cache size io invio tutti i file attualemente in cache
 	int numFileExpected = N <= 0 || N > fileCache.size? fileCache.size : N;
-	pthread_mutex_unlock(&fileCacheMutex);
+	//pthread_mutex_unlock(&fileCacheMutex);
 
-	pthread_mutex_lock(&fileCacheMutex);
+	//pthread_mutex_lock(&fileCacheMutex);
 	GenericNode *corr = fileCache.queue.head;
-	pthread_mutex_unlock(&fileCacheMutex);
 
 	finished = !(i < numFileExpected);
 	if((l = writen(r.comm_socket, &finished, sizeof(int))) == -1){
+		pthread_mutex_unlock(&fileCacheMutex);
 		return -1;
 	}
 
@@ -960,10 +976,12 @@ int executeReadNFile(MyRequest r){
 		MyFile *toSend = (MyFile*)corr->info;
 		corr = corr->next;
 		if((l = writen(r.comm_socket, toSend, sizeof(*toSend))) == -1){
+			pthread_mutex_unlock(&fileCacheMutex);
 			return -1;
 		}
 		
 		if((l = writen(r.comm_socket, toSend->content, toSend->dim)) == -1){
+			pthread_mutex_unlock(&fileCacheMutex);
 			return -1;
 		}
 		//aggiorno ulitma operazione con successo eseguita sul file
@@ -973,9 +991,11 @@ int executeReadNFile(MyRequest r){
 		i++;
 		finished = !(i < numFileExpected);
 		if((l = writen(r.comm_socket, &finished, sizeof(int))) == -1){
+			pthread_mutex_unlock(&fileCacheMutex);
 			return -1;
 		}
 	}
+	pthread_mutex_unlock(&fileCacheMutex);
 	
 	return i;
 }
@@ -1025,13 +1045,13 @@ int executeWriteFile(MyRequest r){
 
 	pthread_mutex_lock(&fileCacheMutex);
 	GenericNode *corr = fileCache.queue.head;
-	pthread_mutex_unlock(&fileCacheMutex);
+	//pthread_mutex_unlock(&fileCacheMutex);
 
 	while(corr != NULL){
-		pthread_mutex_lock(&fileCacheMutex);
+		//pthread_mutex_lock(&fileCacheMutex);
 		if(fileCache.comparison(corr->info, (void*) &toFind) == 1){
 			MyFile *toWrite = (MyFile*) corr->info;
-			pthread_mutex_unlock(&fileCacheMutex);
+			//pthread_mutex_unlock(&fileCacheMutex);
 			found = 1;
 			if(toWrite->isOpen == 0){
 				result = -2;
@@ -1065,6 +1085,10 @@ int executeWriteFile(MyRequest r){
 							serverStatistics.fileCacheActStorageSize += buf_size;
 							pthread_mutex_unlock(&updateStatsMutex);
 							replaceResult = replacingAlgorithm();
+							if(replaceResult == -1){
+								perror("Rilevata inconsistenza in file cache\n");//analogo ad openFile
+								exit(EXIT_FAILURE);
+							}
 							printf("Esito algoritmo di rimpiazzamento: %d\n", replaceResult);
 							if(replaceResult == 1){
 								//non ho rimosso files, procedo con aggiornamento maxStorageSize
@@ -1078,9 +1102,9 @@ int executeWriteFile(MyRequest r){
 			}
 			break;
 		}
-		pthread_mutex_unlock(&fileCacheMutex);
 		corr = corr->next;
 	}
+	pthread_mutex_unlock(&fileCacheMutex);
 	if(found == 0 && result == 0) //non ho trovato il file e non ho incontrato errori precedenti
 		result = -1;
 	if((l = writen(r.comm_socket, &result, sizeof(int))) == -1)

@@ -10,13 +10,8 @@
 #include<unistd.h>
 
 int main(){
-    MyFile f1;
-    memset(&f1, 0, sizeof(f1));
-    GenericQueue g = createQueue(&fileComparison, &filePrint, &freeFile);
-
-    push(&g, (void*) &f1);
-
-    printQueue(g);
+    
+    while(1);
 
     return 0;
 }

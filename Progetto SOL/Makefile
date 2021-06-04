@@ -7,12 +7,17 @@ TARGETS = fileStorageServer fileStorageClient
 VALGRIND_OPTIONS = --leak-check=full --track-origins=yes
 COMMON_DEPS = generic_queue.c utility.c request.c file.c
 SERVER_DEPS = fileStorageServer.c descriptor.c serverInfo.c $(COMMON_DEPS)
-CLIENT_DEPS = fileStorageClient.c clientConfig.c serverAPI.c $(COMMON_DEPS) 
+CLIENT_DEPS = fileStorageClient.c clientConfig.c serverAPI.c $(COMMON_DEPS)
+CLIENTCONFIGOPTIONS = -f $(SOCKNAME) -p -t 200 
+
+CONFTEST1OPENFILE = -i .,1 -i .,1 -o fileDaLeggere.txt,clientConfig.c
+CONFTEST1READFILE = #testing readFile
+
 .PHONY : all, cleanall
 
 all:
-	make fileStorageServer
-	make fileStorageClient
+	make -B fileStorageServer
+	make -B fileStorageClient
 
 cleanall:
 	rm $(SOCKNAME) $(TARGETS) 
@@ -21,13 +26,6 @@ fileStorageServer: $(SERVER_DEPS)
 				  $(CC) $(CFLAGS) $@ $^ -lpthread
 				  valgrind $(VALGRIND_OPTIONS) ./$@ $(CONFIGFILE) 
 
-fileStorageClientTemp: $(CLIENT_DEPS)
-				  $(CC) $(CFLAGS) $@ $^
-				  ./$@ -f $(SOCKNAME) -p
-
 fileStorageClient: $(CLIENT_DEPS)
 				  $(CC) $(CFLAGS) $@ $^
-				  ./$@ -f $(SOCKNAME) -p -t 2000 -d ./Test_Bash_Safe \
-				  -i ./Test_Bash_Safe/FilesDaCreare,0 -w ./Test_Bash_Safe/FilesDaCreare,2 \
-				  -C ./Test_Bash_Safe/FilesDaCreare/fileDaCreare0.txt \
-				  -o ./Test_Bash_Safe/FilesDaCreare/fileDaCreare0.txt -R0 
+				  ./$@ $(CLIENTCONFIGOPTIONS) $(CONFTEST1OPENFILE)

@@ -8,7 +8,7 @@
 
 /*
 	Oltre alle opzioni indicate nella specifica,
-	per arrivare ad avere corrispondenza uno ad uno
+	per arrivare ad avere all'incirca corrispondenza uno ad uno
 	tra opzioni da riga di comando e tipi di richieste
 	da mandare al server ho deciso di aggiungerne alcune mancanti:
 		-o file1[,file2] -> apro i file specificati(non ho il flag O_CREAT

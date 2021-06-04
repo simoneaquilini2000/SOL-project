@@ -124,11 +124,10 @@ void printConfigInfo(ClientConfigInfo c){
 }
 
 int buildInsertRequest(int type, char *arg, int request_flags){
-	char *token = strtok(arg, ",");
+	char *tokenBackup;
+	char *token = strtok_r(arg, ",", &tokenBackup);
 	char buf[PATH_MAX];
 	int ris = 0;
-	char *fileToFind;
-	char *filePath;
 
 	while(token != NULL){
 		MyRequest *r = malloc(sizeof(MyRequest));
@@ -137,6 +136,7 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 		r->flags = request_flags;
 		//fileToFind = getFileNameFromPath(token);
 		memset(buf, 0, sizeof(buf));
+
 
 		/*
 			Se devo scrivere un file, in quanto sarà stato lo stesso client
@@ -147,15 +147,17 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 			in assoluto.
 		*/
 		if(type == WRITE_FILE){
-			filePath = realpath(token, buf); //ottengo path assoluto dato quello relativo
-			if(filePath == NULL){
+			if(realpath(token, buf) == NULL){ //ottengo path assoluto dato quello relativo
 				printf("Non ho trovato file %s\n", token);
 				ris = -1; //flag con cui segnalo l'errore e tale richiesta non verrà spedita
 			}
 		}else{
 			getAbsPathFromRelPath(token, buf, PATH_MAX);
-			if(strcmp(buf, "") == 0)
+			printf("Analizzo token %s\n", token);
+			if(strcmp(buf, "") == 0){
+				printf("BAB");
 				ris = -1;
+			}
 		}
 
 		if(ris == 0){
@@ -167,7 +169,7 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 		}
 		
 		ris = 0;
-		token = strtok(NULL, ",");
+		token = strtok_r(NULL, ",", &tokenBackup);
 	}
 	return 0;
 }
