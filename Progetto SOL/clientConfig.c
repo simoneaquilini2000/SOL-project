@@ -146,19 +146,19 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 			quindi va semplicemente tradotto il path relativo
 			in assoluto.
 		*/
-		if(type == WRITE_FILE){
+		/*if(type == WRITE_FILE){
 			if(realpath(token, buf) == NULL){ //ottengo path assoluto dato quello relativo
 				printf("Non ho trovato file %s\n", token);
 				ris = -1; //flag con cui segnalo l'errore e tale richiesta non verrà spedita
-			}
-		}else{
+			}*/
+		//}else{
 			getAbsPathFromRelPath(token, buf, PATH_MAX);
-			printf("Analizzo token %s\n", token);
-			if(strcmp(buf, "") == 0){
-				printf("BAB");
+			//printf("Analizzo token %s\n", token);
+			if(strcmp(buf, "") == 0){ //errore nella traduzione da path relativo ad assoluto
+				//printf("BAB");
 				ris = -1;
 			}
-		}
+		//}
 
 		if(ris == 0){
 			strncpy(r->request_content, buf, strlen(buf));

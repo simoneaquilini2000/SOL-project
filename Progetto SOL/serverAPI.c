@@ -311,31 +311,36 @@ int writeFile(const char* pathname, const char* dirname){
 	strncpy(r.request_content, absPath, strlen(absPath));
 	r.request_dim = strlen(absPath);
 
+	//printf("HO SCRITTO RICHIESTA\n");
+
 	//scrittura richiesta(ricevuta dal manager)
 	if((l = writen(comm_socket_descriptor, &r, sizeof(r))) == -1){
 		errno = EAGAIN;
 		return -1;
 	}
 
-
+	//printf("SCRIVO BUFSIZE\n");
 	//scrittura buf_size
 	if((l = writen(comm_socket_descriptor, &fileContentDim, sizeof(int))) == -1){
 		errno = EAGAIN;
 		return -1;
 	}
 
+	//printf("SCRIVO CONTENT\n");
 	//scrittura buf
 	if((l = writen(comm_socket_descriptor, fileContent, fileContentDim)) == -1){
 		errno = EAGAIN;
 		return -1;
 	}
 
+	//printf("ATTENDO RISULTATO\n");
 	//attesa risultato
 	if((l = readn(comm_socket_descriptor, &result, sizeof(int))) == -1){
 		errno = EAGAIN;
 		return -1;
 	}
 
+	//printf("OTTENUTO RISULTATO\n");
 	switch(result){
 		case -1:
 			errno = ENOENT; //file da scrivere non presente nel server 
@@ -344,7 +349,7 @@ int writeFile(const char* pathname, const char* dirname){
 			errno = EACCES; //file da scrivere non aperto
 			return -1;
 		case -3: 
-			errno = EPERM; //operazione non permessa
+			errno = EPERM; //operazione non permessa(la precedente non è stata una openFile con O_CREAT)
 			return -1;
 		case -4: 
 			errno = EIO; //non posso scrivere un file la cui dimensione è > del maxStorageSpace della fileCache
@@ -470,7 +475,7 @@ int closeFile(const char* pathname){
 
 	switch(ris){
 		case -1:
-			errno = ENOENT;  //file da leggere non presente nel file
+			errno = ENOENT;  //file da chiudere non presente nel file
 			return -1;
 		case -2:
 			errno = EPERM; //operazione non permessa:impossibile chiudere un file già chiuso

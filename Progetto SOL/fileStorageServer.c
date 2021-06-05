@@ -984,7 +984,7 @@ int executeReadNFile(MyRequest r){
 			pthread_mutex_unlock(&fileCacheMutex);
 			return -1;
 		}
-		//aggiorno ulitma operazione con successo eseguita sul file
+		//aggiorno ultima operazione con successo eseguita sul file
 		toSend->lastSucceedOp.opType = r.type;
 		toSend->lastSucceedOp.optFlags = r.flags;
 		toSend->lastSucceedOp.clientDescriptor = r.comm_socket;
@@ -1025,6 +1025,7 @@ int executeWriteFile(MyRequest r){
 	buf = malloc(buf_size + 1);
 	if(buf == NULL)
 		return -1;
+	memset(buf, 0, buf_size + 1);
 
 	if((l = readn(r.comm_socket, buf, buf_size)) == -1)
 		return -1;
@@ -1032,8 +1033,8 @@ int executeWriteFile(MyRequest r){
 	buf[l] = '\0';
 
 	//verifica replaceCondition e possibility, se fallisce allora invio result = -5
-	int replaceCondition = verifyReplaceCondition(r.type, buf_size);
-	int replacePossibility = verifyReplacePossibility(r.type, r.request_content, buf_size);
+	int replaceCondition = verifyReplaceCondition(r.type, l);
+	int replacePossibility = verifyReplacePossibility(r.type, r.request_content, l);
 
 	//ho errore se l'implicazione verifyReplaceCondition -> verifyReplacePossibility è falsa
 	if(replaceCondition == 1 && replacePossibility == 0){
@@ -1084,7 +1085,9 @@ int executeWriteFile(MyRequest r){
 							pthread_mutex_lock(&updateStatsMutex);
 							serverStatistics.fileCacheActStorageSize += buf_size;
 							pthread_mutex_unlock(&updateStatsMutex);
+							pthread_mutex_unlock(&fileCacheMutex);
 							replaceResult = replacingAlgorithm();
+							pthread_mutex_lock(&fileCacheMutex);
 							if(replaceResult == -1){
 								perror("Rilevata inconsistenza in file cache\n");//analogo ad openFile
 								exit(EXIT_FAILURE);

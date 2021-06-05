@@ -110,7 +110,8 @@ int saveFile(MyFile f, const char dirname[]){
 	int file_fd = open(fileName, O_RDWR | O_CREAT, 0700);
 
 	if(file_fd == -1){
-		perror("Errore open in sola scrittura!\n");
+		perror("Errore open!\n");
+		chdir(previousCwd);
 		return -1;
 	}
 

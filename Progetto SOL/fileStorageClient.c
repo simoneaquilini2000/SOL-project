@@ -72,7 +72,8 @@ int sendRequests(){
 				if(saveFile(toSave, c.saveReadFileDir) == -1){
 					printf("Errore salvataggio file!");
 				}
-				freeFile((void*)&toSave);
+				//freeFile((void*)&toSave);
+				free(toSave.content);
 				free(readDataBuffer);
 				readDataSize = 0;
 				break;
@@ -161,6 +162,8 @@ int main(int argc, char const *argv[]){
 
 	getToSendRequestsFromCmd(argc, argv);
 	//printQueue(toSendRequestQueue);
+
+	//return 0;
 
 	//testFileNonTestuali("progetto_SOL_20-21.pdf");
 
