@@ -42,7 +42,7 @@ long isNumber(const char* s) {
    return -1;
 }
 
-ClientConfigInfo getConfigInfoFromCmd(int argc, const char* argv[]){
+ClientConfigInfo getConfigInfoFromCmd(int argc, char* const* argv){
 	char o;
 	ClientConfigInfo conf;
 	int foundT = 0;
@@ -304,7 +304,7 @@ int buildMultipleWriteRequest(int type, char* arg, int request_flags){
 		return writtenRequests;
 }
 
-void getToSendRequestsFromCmd(int argc, const char* argv[]){
+void getToSendRequestsFromCmd(int argc, char* const* argv){
 	char o;
 
 	optind = 1;

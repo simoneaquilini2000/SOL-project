@@ -1,0 +1,5 @@
+./ServerConf/fileStorageSocket
+1
+10000
+128000000
+/tmp/fileStorageServerLog.txt

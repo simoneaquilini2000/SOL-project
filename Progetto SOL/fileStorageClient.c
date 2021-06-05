@@ -136,7 +136,7 @@ void testFileNonTestuali(const char *pathname){
 	saveFile(f, "./TestFileBinari");
 }
 
-int main(int argc, char const *argv[]){
+int main(int argc, char *const *argv){
 	char o;
 	struct timespec ts; //struttura che indica la massima attesa per la connessione nella openConnection
 

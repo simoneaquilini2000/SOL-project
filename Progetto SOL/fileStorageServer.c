@@ -913,7 +913,9 @@ int executeAppendFile(MyRequest r){
 				pthread_mutex_lock(&updateStatsMutex);
 				serverStatistics.fileCacheActStorageSize += l;
 				pthread_mutex_unlock(&updateStatsMutex);
+				pthread_mutex_unlock(&fileCacheMutex);
 				replaceResult = replacingAlgorithm();
+				pthread_mutex_lock(&fileCacheMutex);
 				if(replaceResult == -1){
 					perror("Rilevata inconsistenza nella cache\n"); //analogo alla openFile
 					exit(EXIT_FAILURE);
@@ -1281,8 +1283,10 @@ int main(int argc, char const *argv[]){
 		printServerStats(serverStatistics);
 		printf("Stampo file rimasti nella cache:\n");
 		printQueue(fileCache);
+		//printf("BOB\n");
 	}
 	freeStructures(); //libero le strutture usate
 	free(workers); //libero puntatore di workers
+	printf("Terminata esecuzione server\n");
 	return 0;
 }

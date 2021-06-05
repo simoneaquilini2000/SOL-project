@@ -34,7 +34,7 @@ typedef struct i{
 void printAvailableOptions();
 
 //restituisce struttura con opzioni di configurazioni passate
-ClientConfigInfo getConfigInfoFromCmd(int, const char* []);
+ClientConfigInfo getConfigInfoFromCmd(int, char* const*);
 
 //stampa i parametri di configurazione
 void printConfigInfo(ClientConfigInfo);
@@ -62,4 +62,4 @@ int navigateFileSystem(char *, int, int, int, int);
 int buildReadNRequest(int, char*, int);
 
 //parsa la cmd e costruisce la coda delle richieste da spedire al server
-void getToSendRequestsFromCmd(int, const char* []);
+void getToSendRequestsFromCmd(int, char* const*);
