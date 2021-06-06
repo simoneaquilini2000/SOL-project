@@ -26,6 +26,10 @@ clientConf[3]=$confClient4
 clientConf[4]=$confClient4
 saveDir=$1
 serverPid=$(pidof fileStorageServer)
+
+rm -f $saveDir/*
+rmdir $saveDir
+
 if mkdir $saveDir;then
     for((i=0;$i < ${#clientConf[@]};i++));do
         nomeFile=$saveDir/outputClient$i.txt
