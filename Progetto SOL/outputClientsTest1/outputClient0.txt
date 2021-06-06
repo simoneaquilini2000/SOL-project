@@ -90,8 +90,7 @@ Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(64)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/ConfigAndUtilities/utility.c
-	Esito: -1
-	Codice di errore: 28
+	Esito: 0
 Fine richiesta OPEN FILE
 
 Inizio richiesta OPEN FILE
@@ -99,8 +98,7 @@ Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(64)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/fileStorageClient
-	Esito: -1
-	Codice di errore: 28
+	Esito: 0
 Fine richiesta OPEN FILE
 
 Inizio richiesta OPEN FILE
@@ -108,8 +106,7 @@ Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(64)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/fileStorageClient.c
-	Esito: -1
-	Codice di errore: 28
+	Esito: 0
 Fine richiesta OPEN FILE
 
 Inizio richiesta OPEN FILE
@@ -117,8 +114,7 @@ Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(64)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/fileStorageServer
-	Esito: -1
-	Codice di errore: 28
+	Esito: 0
 Fine richiesta OPEN FILE
 
 Inizio richiesta OPEN FILE
@@ -126,8 +122,7 @@ Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(64)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/fileStorageServer.c
-	Esito: -1
-	Codice di errore: 28
+	Esito: 0
 Fine richiesta OPEN FILE
 
 Inizio richiesta OPEN FILE
@@ -135,8 +130,7 @@ Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(64)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/Headers/clientConfig.h
-	Esito: -1
-	Codice di errore: 28
+	Esito: 0
 Fine richiesta OPEN FILE
 
 Inizio richiesta OPEN FILE
@@ -144,8 +138,7 @@ Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(64)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/Headers/descriptor.h
-	Esito: -1
-	Codice di errore: 28
+	Esito: 0
 Fine richiesta OPEN FILE
 
 Inizio richiesta OPEN FILE
@@ -153,8 +146,7 @@ Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(64)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/Headers/file.h
-	Esito: -1
-	Codice di errore: 28
+	Esito: 0
 Fine richiesta OPEN FILE
 
 Inizio richiesta OPEN FILE
@@ -162,8 +154,7 @@ Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(64)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/Headers/generic_queue.h
-	Esito: -1
-	Codice di errore: 28
+	Esito: 0
 Fine richiesta OPEN FILE
 
 Inizio richiesta OPEN FILE
@@ -171,8 +162,7 @@ Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(64)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/Headers/request.h
-	Esito: -1
-	Codice di errore: 28
+	Esito: 0
 Fine richiesta OPEN FILE
 
 Inizio richiesta WRITE FILE
@@ -184,35 +174,35 @@ Stampo informazioni post esecuzione della richiesta:
 Fine richiesta WRITE FILE
 
 Inizio richiesta WRITE FILE
-Ho scritto nel file storage 6808 bytes
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/build/objs/descriptor.o
-	Esito: 0
+	Esito: -1
+	Codice di errore: 1
 Fine richiesta WRITE FILE
 
 Inizio richiesta WRITE FILE
-Ho scritto nel file storage 17008 bytes
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/build/objs/file.o
-	Esito: 0
+	Esito: -1
+	Codice di errore: 1
 Fine richiesta WRITE FILE
 
 Inizio richiesta WRITE FILE
-Ho scritto nel file storage 12088 bytes
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/build/objs/generic_queue.o
-	Esito: 0
+	Esito: -1
+	Codice di errore: 1
 Fine richiesta WRITE FILE
 
 Inizio richiesta WRITE FILE
-Ho scritto nel file storage 9008 bytes
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/build/objs/request.o
-	Esito: 0
+	Esito: -1
+	Codice di errore: 1
 Fine richiesta WRITE FILE
 
 Inizio richiesta WRITE FILE
@@ -260,7 +250,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/ConfigAndUtilities/utility.c
 	Esito: -1
-	Codice di errore: 2
+	Codice di errore: 1
 Fine richiesta WRITE FILE
 
 Inizio richiesta WRITE FILE
@@ -268,7 +258,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/fileStorageClient
 	Esito: -1
-	Codice di errore: 2
+	Codice di errore: 1
 Fine richiesta WRITE FILE
 
 Inizio richiesta WRITE FILE
@@ -276,15 +266,14 @@ Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
 	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/fileStorageClient.c
 	Esito: -1
-	Codice di errore: 2
+	Codice di errore: 1
 Fine richiesta WRITE FILE
 
 Inizio richiesta CLOSE FILE
 Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 2(0)
-	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/clientConfig.c
-	Esito: -1
-	Codice di errore: 2
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/ConfigAndUtilities/clientConfig.c
+	Esito: 0
 Fine richiesta CLOSE FILE
 Esito terminazione connesione: 0

@@ -4,6 +4,7 @@ Config parameters:
 	saveReadFileDir: ./SaveReadFileDirectory/AllCacheFiles
 	requestInterval: 200
 Sono connesso al server
+
 Inizio richiesta OPEN FILE
 Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
@@ -12,6 +13,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: -1
 	Codice di errore: 28
 Fine richiesta OPEN FILE
+
 Inizio richiesta OPEN FILE
 Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
@@ -20,6 +22,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: -1
 	Codice di errore: 28
 Fine richiesta OPEN FILE
+
 Inizio richiesta OPEN FILE
 Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
@@ -28,6 +31,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: -1
 	Codice di errore: 28
 Fine richiesta OPEN FILE
+
 Inizio richiesta OPEN FILE
 Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
@@ -36,6 +40,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: -1
 	Codice di errore: 28
 Fine richiesta OPEN FILE
+
 Inizio richiesta OPEN FILE
 Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
@@ -44,6 +49,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: -1
 	Codice di errore: 28
 Fine richiesta OPEN FILE
+
 Inizio richiesta WRITE FILE
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
@@ -51,6 +57,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: -1
 	Codice di errore: 2
 Fine richiesta WRITE FILE
+
 Inizio richiesta WRITE FILE
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
@@ -58,6 +65,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: -1
 	Codice di errore: 2
 Fine richiesta WRITE FILE
+
 Inizio richiesta WRITE FILE
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
@@ -65,6 +73,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: -1
 	Codice di errore: 2
 Fine richiesta WRITE FILE
+
 Inizio richiesta WRITE FILE
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
@@ -72,6 +81,7 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: -1
 	Codice di errore: 2
 Fine richiesta WRITE FILE
+
 Inizio richiesta WRITE FILE
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 5(0)
@@ -79,8 +89,9 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: -1
 	Codice di errore: 2
 Fine richiesta WRITE FILE
+
 Inizio richiesta READ_N_FILE
-In totale ho letto 11592 bytes
+In totale ho letto 0 bytes
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 6(0)
 	File di riferimento: 0

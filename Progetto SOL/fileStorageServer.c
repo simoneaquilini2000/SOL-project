@@ -614,7 +614,8 @@ int executeOpenFile(MyRequest r){
 					dell'integrità della cache!\n"); //problema in ME ha creato inconsistenza nella cache
 					exit(EXIT_FAILURE); //errore fatale
 				}
-				printf("Esito algoritmo di rimpiazzamento: %d\n", replaceResult);
+				printf("Ho creato nuovo file: %s\n", p->filePath);
+				printf("Esito algoritmo di rimpiazzamento: %d\n\n", replaceResult);
 				if(replaceResult == 1){ //dopo inserimento in coda ristabilisco integrità del sistema
 					//non ho rimosso files quindi aggiorno eventualmente maxSize della cache
 					pthread_mutex_lock(&fileCacheMutex);
@@ -920,7 +921,8 @@ int executeAppendFile(MyRequest r){
 					perror("Rilevata inconsistenza nella cache\n"); //analogo alla openFile
 					exit(EXIT_FAILURE);
 				}
-				printf("Esito algoritmo di rimpiazzamento: %d\n", replaceResult);
+				printf("Ho scritto in APPEND il file: %s\n", toAppend->filePath);
+				printf("Esito algoritmo di rimpiazzamento: %d\n\n", replaceResult);
 				if(replaceResult == 1){
 					//non ho rimosso files, procedo con aggiornamento maxStorageSize
 					pthread_mutex_lock(&updateStatsMutex);
@@ -1094,7 +1096,8 @@ int executeWriteFile(MyRequest r){
 								perror("Rilevata inconsistenza in file cache\n");//analogo ad openFile
 								exit(EXIT_FAILURE);
 							}
-							printf("Esito algoritmo di rimpiazzamento: %d\n", replaceResult);
+							printf("Ho scritto il file: %s\n", toWrite->filePath);
+							printf("Esito algoritmo di rimpiazzamento: %d\n\n", replaceResult);
 							if(replaceResult == 1){
 								//non ho rimosso files, procedo con aggiornamento maxStorageSize
 								pthread_mutex_lock(&updateStatsMutex);

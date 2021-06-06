@@ -12,11 +12,12 @@ if [ $# -lt 1 ];then
 fi
 commonConf="-f ./ServerConf/fileStorageSocket -t 200 -p"
 #configurazioni di clients
-confClient1="$commonConf -i .,20 -w .,13 -C clientConfig.c"
-confClient2="$commonConf -i ../Processi,0 -W ../Processi/processi.pdf -o clientConfig.c"
+confClient1="$commonConf -i .,20 -w .,13 -C ./ConfigAndUtilities/clientConfig.c"
+confClient2="$commonConf -i ../Processi,0 \
+    -W ../Processi/processi.pdf,./Test_files/QuadratoRosso.png -o ./ConfigAndUtilities/clientConfig.c"
 confClient3="$commonConf -d ./SaveReadFileDirectory -r clientConfig.c"
-confClient4="$commonConf -d ./SaveReadFileDirectory/AllCacheFiles -i ..,5 -w ..,5 -R0"
-confClient5="$commonConf -d ./SaveReadFileDirectory/AllCacheFiles -i ..,10 -C pippo.txt -R1"
+confClient4="$commonConf -d ./SaveReadFileDirectory/AllCacheFilesTest1 -i ..,5 -w ..,5 -R0"
+confClient5="$commonConf -d ./SaveReadFileDirectory/AllCacheFilesTest1 -i ..,10 -C pippo.txt -R1"
 
 #setup array di configurazioni client
 clientConf[0]=$confClient1
@@ -25,11 +26,12 @@ clientConf[2]=$confClient3
 clientConf[3]=$confClient4
 clientConf[4]=$confClient4
 saveDir=$1
-#echo $testType    
+
+#creazione shell in bg con valgrind per ottenerne il PID tramite $!
 valgrind --leak-check=full --show-leak-kinds=all ./fileStorageServer ./ServerConf/config.txt &
 serverPid=$!
 
-
+#se la cartella già esiste, la cancello e la ricreerò tramite lo script
 rm -f $saveDir/*
 rmdir $saveDir
 
@@ -41,7 +43,7 @@ if mkdir $saveDir;then
         else
             echo 'Errore creazione file'
         fi
-        sleep 0.5
+        sleep 1
     done
     kill -s SIGHUP $serverPid
     wait $serverPid

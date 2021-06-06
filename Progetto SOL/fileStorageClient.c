@@ -39,6 +39,7 @@ int sendRequests(){
 		if(actReq == NULL)
 			return -1;
 		
+		printf("\n");
 		switch(actReq->type){
 			case WRITE_FILE:
 				//ris = openFile(actReq->request_content, O_CREAT);

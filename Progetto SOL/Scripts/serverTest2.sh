@@ -14,10 +14,11 @@ commonConf="-f ./ServerConf/fileStorageSocket -t 200 -p"
 #configurazioni di clients
 confClient1="$commonConf -i .,20 -w .,13 -C clientConfig.c"
 confClient2="$commonConf -i ../Processi,0 -W ../Processi/processi.pdf -o clientConfig.c"
-confClient3="$commonConf -d ./SaveReadFileDirectory -r clientConfig.c -i /mnt/c/Users/Utente/Desktop/SIMONE/Università/Primo_Anno,4 \
-    -w /mnt/c/Users/Utente/Desktop/SIMONE/Università/Primo_Anno,2"
-confClient4="$commonConf -d ./SaveReadFileDirectory/AllCacheFiles -i ..,5 -w ..,5 -R0"
-confClient5="$commonConf -t 2000 -d ./SaveReadFileDirectory/AllCacheFiles -i ..,10 -C pippo.txt -R1"
+confClient3="$commonConf -d ./SaveReadFileDirectory -r clientConfig.c -i ../../../../Primo_Anno,4 \
+    -w ../../../../Primo_Anno,2"
+confClient4="$commonConf -d ./SaveReadFileDirectory/AllCacheFilesTest2 -i ..,5 -w ..,5 -R0"
+confClient5="$commonConf -t 2000 -d ./SaveReadFileDirectory -i ..,10 \
+                    -C ./ConfigAndUtilities/serverInfo.c -R1"
 
 #setup array di configurazioni client
 clientConf[0]=$confClient1

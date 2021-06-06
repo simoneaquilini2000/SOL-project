@@ -54,7 +54,8 @@ cleanall:
 	rm $(SOCKNAME) $(TARGETS)
 	rm -f $(OBJ_FOLDER)/*.o
 	rm -f $(LIB_FOLDER)/*.so
-	rm -f ./SaveReadFileDirectory/* 
+	rm -f ./SaveReadFileDirectory/AllCacheFilesTest2/*
+	rm -f ./SaveReadFileDirectory/AllCacheFilesTest1/* 
 
 
 #rm $(CLIENTOUTPUT_DIR1)/*
