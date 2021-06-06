@@ -170,7 +170,7 @@ int readFileContent(const char *pathname, char **fileContent){
 	int fileDim = 0;
 	int charToAdd;
 
-	FILE *fp = fopen(absPath, "r");
+	FILE *fp = fopen(absPath, "rb");
 
     // checking if the file exist or not
     if (fp == NULL)

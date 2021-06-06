@@ -509,7 +509,7 @@ int replacingAlgorithm(){
 			return -1;
 		}
 		if(toDel->modified == 1){
-			//printf("Ho selezionato come file vittima: %s\n", toDel->filePath);
+			printf("Ho selezionato come file vittima: %s\n", toDel->filePath);
 			pthread_mutex_lock(&updateStatsMutex);
 			serverStatistics.fileCacheActStorageSize -= toDel->dim;
 			replaceCondition = (serverStatistics.fileCacheActStorageSize > s.maxStorageSpace || actQueueSize - 1 > s.nMaxFile);

@@ -1,0 +1,61 @@
+Config parameters:
+	printEnable: 1
+	socketName: ./ServerConf/fileStorageSocket
+	saveReadFileDir: ./SaveReadFileDirectory
+	requestInterval: 200
+Sono connesso al server
+Inizio richiesta READ FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 1(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/clientConfig.c
+	Esito: -1
+	Codice di errore: 2
+Fine richiesta READ FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Primo_Anno/Algoritmica e laboratorio/esame_aquilini
+	Esito: -1
+	Codice di errore: 28
+Fine richiesta OPEN FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Primo_Anno/Algoritmica e laboratorio/esame_aquilini.c
+	Esito: -1
+	Codice di errore: 28
+Fine richiesta OPEN FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Primo_Anno/Algoritmica e laboratorio/Ripasso C/invArray
+	Esito: -1
+	Codice di errore: 28
+Fine richiesta OPEN FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Primo_Anno/Algoritmica e laboratorio/Ripasso C/invArray.c
+	Esito: -1
+	Codice di errore: 28
+Fine richiesta OPEN FILE
+Inizio richiesta WRITE FILE
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 5(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Primo_Anno/Algoritmica e laboratorio/esame_aquilini
+	Esito: -1
+	Codice di errore: 2
+Fine richiesta WRITE FILE
+Inizio richiesta WRITE FILE
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 5(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Primo_Anno/Algoritmica e laboratorio/esame_aquilini.c
+	Esito: -1
+	Codice di errore: 2
+Fine richiesta WRITE FILE
+Esito terminazione connesione: 0

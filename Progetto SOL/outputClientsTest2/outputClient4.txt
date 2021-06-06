@@ -1,0 +1,86 @@
+Config parameters:
+	printEnable: 1
+	socketName: ./ServerConf/fileStorageSocket
+	saveReadFileDir: ./SaveReadFileDirectory/AllCacheFiles
+	requestInterval: 200
+Sono connesso al server
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/00-informazionicorso.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Chiamate di sistema/System Call files.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione condizionale/funzioni rientranti.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione condizionale/preprocessore e compilazione condizionata.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione condizionale/puntatori a funzione.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
+Inizio richiesta WRITE FILE
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 5(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/00-informazionicorso.pdf
+	Esito: -1
+	Codice di errore: 1
+Fine richiesta WRITE FILE
+Inizio richiesta WRITE FILE
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 5(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Chiamate di sistema/System Call files.pdf
+	Esito: -1
+	Codice di errore: 1
+Fine richiesta WRITE FILE
+Inizio richiesta WRITE FILE
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 5(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione condizionale/funzioni rientranti.pdf
+	Esito: -1
+	Codice di errore: 1
+Fine richiesta WRITE FILE
+Inizio richiesta WRITE FILE
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 5(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione condizionale/preprocessore e compilazione condizionata.pdf
+	Esito: -1
+	Codice di errore: 1
+Fine richiesta WRITE FILE
+Inizio richiesta WRITE FILE
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 5(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione condizionale/puntatori a funzione.pdf
+	Esito: -1
+	Codice di errore: 1
+Fine richiesta WRITE FILE
+Inizio richiesta READ_N_FILE
+In totale ho letto 11592 bytes
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 6(0)
+	File di riferimento: 0
+	Esito: 10
+	Numero di file letti: 10
+
+Fine richiesta READ_N_FILE
+Esito terminazione connesione: 0

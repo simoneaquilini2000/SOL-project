@@ -1,0 +1,29 @@
+Config parameters:
+	printEnable: 1
+	socketName: ./ServerConf/fileStorageSocket
+	saveReadFileDir: 
+	requestInterval: 200
+Sono connesso al server
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Processi/processi.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
+Inizio richiesta WRITE FILE
+Ho scritto nel file storage 401463 bytes
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 5(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Processi/processi.pdf
+	Esito: 0
+Fine richiesta WRITE FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 0(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/clientConfig.c
+	Esito: -1
+	Codice di errore: 2
+Fine richiesta OPEN FILE
+Esito terminazione connesione: 0

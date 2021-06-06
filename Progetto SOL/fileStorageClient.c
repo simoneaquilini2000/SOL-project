@@ -169,6 +169,17 @@ int main(int argc, char *const *argv){
 
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
 
+	/*int ris = openFile("../../Teoria/03-Interfaccia SO e processi.pdf", O_CREAT);
+	printf("%d %d\n", ris, errno);
+
+	ris = writeFile("../../Teoria/03-Interfaccia SO e processi.pdf", NULL);
+	printf("%d %d\n", ris, errno);
+
+	ris = readNFiles(-1, c.saveReadFileDir);
+	printf("%d %d\n", ris, errno);*/
+
+
+
 	int result = sendRequests();
 
 	/*int ris;

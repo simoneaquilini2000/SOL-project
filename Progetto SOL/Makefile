@@ -54,7 +54,7 @@ cleanall:
 	rm $(SOCKNAME) $(TARGETS)
 	rm -f $(OBJ_FOLDER)/*.o
 	rm -f $(LIB_FOLDER)/*.so
-	rm -f ./SaveReadFileDir/* 
+	rm -f ./SaveReadFileDirectory/* 
 
 
 #rm $(CLIENTOUTPUT_DIR1)/*
@@ -116,9 +116,7 @@ $(OBJ_FOLDER)/clientConfig.o:
 
 
 test1:
-	./fileStorageServer $(CONFIGFILE1) &
-	./serverTestScript.sh $(CLIENTOUTPUT_DIR1)
+	./Scripts/serverTest1.sh $(CLIENTOUTPUT_DIR1)
 
 test2:
-	./fileStorageServer $(CONFIGFILE2) &
-	./serverTestScript.sh $(CLIENTOUTPUT_DIR2)
+	./Scripts/serverTest2.sh $(CLIENTOUTPUT_DIR2)
