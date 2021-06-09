@@ -4,13 +4,18 @@
     dichiarazione delle funzioni su esse operanti
 */
 
-#define N_INFO 5 //numero di righe da parsare dal file di testo
+/*
+    Numero di righe da parsare dal file di configurazione.
+    Di fatto, costituisce la quantità di informazioni di configurazione
+    da estrapolare dal configFile
+*/
+#define N_INFO 5
 
 typedef struct s{
 	size_t maxStorageSpace; //massimo spazio di memorizzazione(in bytes)
 	int nMaxFile; //massimo numero di file memorizzabili
 	int nWorkers; //numero di thread workers
-	char socketPath[1024]; //path del socket
+	char socketPath[1024]; //path del socket lato server
 	char logFilePath[1024]; //path del file di log(non implementato)
 }serverInfo;
 
@@ -31,5 +36,5 @@ serverInfo startConfig(const char*);
 //stampa parametri di configurazione
 void printConfig(serverInfo);
 
-//stampa statistiche su operato del server
+//stampa statistiche sull' operato del server
 void printServerStats(serverStats);

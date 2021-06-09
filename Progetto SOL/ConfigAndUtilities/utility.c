@@ -40,7 +40,17 @@ void myStrNCpy(char out[], char in[], int len){
 		out[i] = '\0';
 }
 
-
+long isNumber(const char* s) {
+   char* e = NULL;
+   long val = strtol(s, &e, 0);
+   if (errno == ERANGE){
+   	return -2;
+   }
+   if (e != NULL && *e == (char)0) 
+   		return val;
+   
+   return -1;
+}
 
 int readn(long fd, void *buf, size_t size) {
     size_t left = size;

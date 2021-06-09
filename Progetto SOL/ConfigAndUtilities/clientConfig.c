@@ -14,8 +14,11 @@
 #include "request.h"
 #include "utility.h"
 
-extern GenericQueue toSendRequestQueue;
+GenericQueue toSendRequestQueue; //coda delle richieste da spedire al client
 
+/*
+	Stampo tutte le opzioni disponibili
+*/
 void printAvailableOptions(){
 	printf("Available options:\n");
 	printf("\t-f socketName\n");
@@ -26,20 +29,10 @@ void printAvailableOptions(){
 	printf("\t-d dirName\n");
 	printf("\t-t time\n");
 	printf("\t-c file1[,file2]\n");
+	printf("\t-o file1,[,file2]\n"); //aggiuntiva
+	printf("\t-i dirName[,n]\n"); //aggiuntiva
+	printf("\t-C file1,[,file2]\n"); //aggiuntiva
 	printf("\t-p\n");
-}
-
-long isNumber(const char* s) {
-   char* e = NULL;
-   //printf("Mi hai dato stringa %s\n", s);
-   long val = strtol(s, &e, 0);
-   if (errno == ERANGE){
-   	return -2;
-   }
-   if (e != NULL && *e == (char)0) 
-   		return val;
-   
-   return -1;
 }
 
 ClientConfigInfo getConfigInfoFromCmd(int argc, char* const* argv){
@@ -51,57 +44,65 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, char* const* argv){
 	int foundr = 0;
 	int foundR = 0;
 
+	memset(&conf, 0, sizeof(conf));
+
 
 	conf.printEnable = 0;
 	optind = 1; //resetto l'indice di getopt in modo da poter scandire le opzioni più volte
 
 	while((o = getopt(argc, argv, ALL_OPTIONS)) != -1){
-		//printf("Opzione: %c\n", o);
 		switch(o){
-			case 't': if((conf.requestInterval = (int) isNumber(optarg)) < 0){
-						  perror("Wrong argument format for option -t");
-						  exit(EXIT_FAILURE);
-					  }
-					  foundT = 1;
-					  break;
-			case 'f': if(foundF){
-						perror("Can not repeat option -f");
-						exit(EXIT_FAILURE);
-					  }
-					  foundF = 1;
-					  //printf("Argomento di -f: %s\n", optarg);
-					  strcpy(conf.socketName, optarg);
-					  //if(strlen(conf.socketName) < 1023)
-					  	//conf.socketName[strlen(conf.socketName) - 1] = '\0';
-					  break;
+			case 't': 
+				//per l'opzione t prendo solo l'ultima occorrenza
+				if((conf.requestInterval = (int) isNumber(optarg)) < 0){
+					perror("Wrong argument format for option -t");
+					exit(EXIT_FAILURE);
+				}
+				foundT = 1;
+				break;
+			case 'f': 
+				// non posso ripetere l'opzione f, se ciò accade la richiesta è malformata
+				if(foundF){
+					perror("Can not repeat option -f");
+					exit(EXIT_FAILURE);
+				}
+				foundF = 1;
+				strcpy(conf.socketName, optarg);
+				break;
 
-			case 'p': if(conf.printEnable){
-						perror("Can not repeat option -p");
-						exit(EXIT_FAILURE);
-					  }
-					  conf.printEnable = 1;
-					  break;
-			case 'd': if(foundD) //se ho più volte l'opzione -d prendo solo l'ultima occorrenza
-						clearBuffer(conf.saveReadFileDir, strlen(conf.saveReadFileDir));
-					  foundD = 1;
-					  strcpy(conf.saveReadFileDir, optarg);
-					  //myStrNCpy(conf.saveReadFileDir, optarg, strlen(optarg));
-					  break;
-			case 'R': foundR = 1; //cercare qua -r e -R servono solo per verificare la correttezza della richiesta
-					  break;
-			case 'r': foundr = 1;
-					  break;
-			case '?': perror("Invalid option(s)");
-					  exit(EXIT_FAILURE);
-					  break;
-			default: break;
+			case 'p':
+				//non posso ripetere l'opzione -p, quindi vale quanto detto per -f 
+				if(conf.printEnable){
+					perror("Can not repeat option -p");
+					exit(EXIT_FAILURE);
+				}
+				conf.printEnable = 1;
+				break;
+			case 'd': 
+				if(foundD) //se ho più volte l'opzione -d prendo solo l'ultima occorrenza
+					clearBuffer(conf.saveReadFileDir, strlen(conf.saveReadFileDir));
+				foundD = 1;
+				strcpy(conf.saveReadFileDir, optarg);
+				break;
+			case 'R': 
+				foundR = 1; //cercare qua -r e -R servono solo per verificare la correttezza della richiesta
+				break;
+			case 'r': 
+				foundr = 1;
+				break;
+			case '?': 
+				//opzione invalida, richiesta malformata
+				perror("Invalid option(s)");
+				exit(EXIT_FAILURE);
+				break;
+			default: break; //ignoro opzioni non di configurazione
 		}
 	}
 
 	if(foundT == 0)
-		conf.requestInterval = 0;
+		conf.requestInterval = 0; //non ho intervallo tra una richiesta e l'altra
 	if(foundD == 0)
-		clearBuffer(conf.saveReadFileDir, 1024);
+		clearBuffer(conf.saveReadFileDir, 1024); //file letti non verrano salvati
 	else{
 		if(foundR == 0 && foundr == 0){ //c'è l'opzione -d ma non c'è né -r né -R -> ERRORE
 			perror("Option -d must be used with option -r or -R\n");
@@ -124,52 +125,54 @@ void printConfigInfo(ClientConfigInfo c){
 }
 
 int buildInsertRequest(int type, char *arg, int request_flags){
-	char *tokenBackup;
-	char *token = strtok_r(arg, ",", &tokenBackup);
+	/*
+		In quanto anche la getAbsPathFromRelPath tokenizza una stringa
+		(in tal caso usa '/' come separatore) è necessario salvarsi
+		lo stato della stringa arg da spezzettare in modo da evitare
+		effetti indesiderati 
+	*/
+	char *tokenBackup; //tiene lo stato di tokenizzazione di arg
+	char *token = strtok_r(arg, ",", &tokenBackup); //token corrente di arg
 	char buf[PATH_MAX];
 	int ris = 0;
 
 	while(token != NULL){
-		MyRequest *r = malloc(sizeof(MyRequest));
+		MyRequest *r = malloc(sizeof(MyRequest)); //creo richiesta
+		if(r == NULL){ //errore malloc, memoria inconsistente quindi errore fatale 
+			perror("Malloc error!\n");
+			exit(EXIT_FAILURE);
+		}
 		memset(r, 0, sizeof(MyRequest));
 		r->type = type;
 		r->flags = request_flags;
-		//fileToFind = getFileNameFromPath(token);
 		memset(buf, 0, sizeof(buf));
-
 
 		/*
 			Se devo scrivere un file, in quanto sarà stato lo stesso client
 			a crearlo ed aprirlo; il contenuto da scrivere dovrà
-			essere presente nel file system del client.
+			essere presente nel file system del client(ciò verrà gestito tramite l'API).
 			In caso contrario, ciò non è strettamente necessario
 			quindi va semplicemente tradotto il path relativo
 			in assoluto.
 		*/
-		/*if(type == WRITE_FILE){
-			if(realpath(token, buf) == NULL){ //ottengo path assoluto dato quello relativo
-				printf("Non ho trovato file %s\n", token);
-				ris = -1; //flag con cui segnalo l'errore e tale richiesta non verrà spedita
-			}*/
-		//}else{
-			getAbsPathFromRelPath(token, buf, PATH_MAX);
-			//printf("Analizzo token %s\n", token);
-			if(strcmp(buf, "") == 0){ //errore nella traduzione da path relativo ad assoluto
-				//printf("BAB");
-				ris = -1;
-			}
-		//}
+		getAbsPathFromRelPath(token, buf, PATH_MAX);
+		
+		if(strcmp(buf, "") == 0){ //errore nella traduzione da path relativo ad assoluto
+			ris = -1;
+		}
 
-		if(ris == 0){
+		if(ris == 0){ //inserisco richieste solo se non ci sono stati errori in traduzione
 			strncpy(r->request_content, buf, strlen(buf));
-			if(push(&toSendRequestQueue, (void*)r) == -1){
-				perror("errore push!");
+			if(push(&toSendRequestQueue, (void*)r) == -1){ //errore fatale nella push
+				perror("push error!");
 				exit(EXIT_FAILURE);
 			}
+		}else{
+			free(r); //se la richiesta non è stata inserita, libero la struttura per evitare leaks
 		}
 		
 		ris = 0;
-		token = strtok_r(NULL, ",", &tokenBackup);
+		token = strtok_r(NULL, ",", &tokenBackup); //prendo prossimo token
 	}
 	return 0;
 }
@@ -187,22 +190,17 @@ int buildReadNRequest(int type, char *arg, int request_flags){
 		sprintf(toSend, "%d", ris); //senza argomento la richiesta si trasforma in -R 0
 		toSend[strlen(toSend)] = '\0';
 		printf("Argomento non specificato quindi inserisco %s\n", toSend);
+		//request_content conterrà il numero di file da leggere(0 se l'argomento non è specificato)
 		strncpy(toAdd->request_content, toSend, strlen(toSend));
 	}else{
-		//printf("Argomento = %s\n", arg);
 		int arg_size = strlen(arg);
 		char buf[arg_size + 1];
-		strncpy(buf, arg, arg_size);
-		//printf("Buffer = %s\n", buf);
-		//ris = atoi(buf);
-		//printf("ris = %d\n", ris);
+		strncpy(buf, arg, arg_size); //copio l'argomento specificato
 		strncpy(toAdd->request_content, arg, strlen(arg));
 	}
-	toAdd->flags = request_flags;
+	toAdd->flags = request_flags; //aggiungo eventuali flags
 
-	//printf("Ho modificato il contenuto = %s\n", toAdd->request_content);
-
-	if(push(&toSendRequestQueue, toAdd) == -1){
+	if(push(&toSendRequestQueue, toAdd) == -1){ //errore fatale nella push
 		perror("errore push!");
 		exit(EXIT_FAILURE);
 	}
@@ -210,16 +208,19 @@ int buildReadNRequest(int type, char *arg, int request_flags){
 }
 
 int navigateFileSystem(char *rootPath, int n, int flag, int request_type, int request_flags){
-	if(flag && n <= 0) //flag usato per indicare se c'è una quantità massima di file da leggere
+	if(flag && n <= 0) //flag usato per indicare se c'è una quantità massima di file da leggere(1) o meno(0)
 		return 0;
 
-	DIR *currentDir;
+	DIR *currentDir; //directory corrente
 	struct dirent *actFile;
 	struct stat fileInfo;
-	int readFiles = 0;
-	char buf[PATH_MAX], cWorkDir[1024];
+	int readFiles = 0; //file letti dalla directory corrente
+	char buf[PATH_MAX]; //tengo il path assoluto del file oggetto della richiesta da inserire
+	char cWorkDir[1024]; //mantengo cwd per eventuali scansioni ricorsive
 
 	currentDir = opendir(rootPath);
+
+	//in caso di errori in apertura o cambio di cwd ritorno 0 file letti
 	if(currentDir == NULL)
 		return 0;
 
@@ -228,28 +229,29 @@ int navigateFileSystem(char *rootPath, int n, int flag, int request_type, int re
 
 	errno = 0;
 	while((actFile = readdir(currentDir)) != NULL && errno == 0){
-		if(stat(actFile->d_name, &fileInfo) == -1)
+		if(stat(actFile->d_name, &fileInfo) == -1) //ottengo info sul file corrente
 			return readFiles;
 
 		if(strcmp(actFile->d_name, ".") != 0 && strcmp(actFile->d_name, "..") != 0){
-			if(S_ISDIR(fileInfo.st_mode)){
+			if(S_ISDIR(fileInfo.st_mode)){ //se trovo una cartella navigo il FS ricorsivamente
 				getcwd(cWorkDir, 1024);
 				readFiles += navigateFileSystem(actFile->d_name, n - readFiles, flag, request_type, request_flags);
-				if(chdir(cWorkDir) == -1){
+				if(chdir(cWorkDir) == -1){ //se non riesco a tornare alla cwd ho errore fatale
 					printf("Errore cambio working directory!\n");
 					exit(EXIT_FAILURE);
 				}
 			}else{
+				//se non ho raggiunto il limite oppure se il limite non c'era,
+				// aggiungo richiesta riguardante il file specificato
 				if((flag && readFiles < n) || !flag){
 					MyRequest *r = malloc(sizeof(MyRequest));
 					memset(r, 0, sizeof(MyRequest));
 					r->type = request_type;
 					r->flags = request_flags;
-					//printf("Inserisco richiesta WRITE_FILE per il file %s\n", actFile->d_name);
 					if(realpath(actFile->d_name, buf) != NULL){
 						//per costruire richiesta ottengo path assoluto dei file
 						strncpy(r->request_content, buf, strlen(buf));
-						if(push(&toSendRequestQueue, (void*)r) == -1){
+						if(push(&toSendRequestQueue, (void*)r) == -1){ //errore fatale nella push
 							perror("Errore push!\n");
 							exit(EXIT_FAILURE);
 						}
@@ -263,17 +265,19 @@ int navigateFileSystem(char *rootPath, int n, int flag, int request_type, int re
 		}
 	}
 
-	closedir(currentDir);
-	return readFiles;
+	closedir(currentDir); //chiudo directory corrente
+	return readFiles; //riorno numero di file letti dalla cwd
 }
 
 int buildMultipleWriteRequest(int type, char* arg, int request_flags){
-	char *dir = strtok(arg, ","); //ottengo cartella da cui partire per manadare richieste di WRITE_FILE
+	char *dir = strtok(arg, ","); //ottengo cartella da cui partire per mandare richieste di WRITE_FILE
 	char buf[PATH_MAX];
 	char currDir[PATH_MAX];
 
-	//Gestisco l'opzione -w
-
+	/*
+		La cartella specificata deve esistere
+		altrimenti la richiesta risulterà scorretta
+	*/
 	if(realpath(dir, buf) == NULL){
 		printf("La cartella specificata non esiste\n");
 		return -1;
@@ -288,9 +292,9 @@ int buildMultipleWriteRequest(int type, char* arg, int request_flags){
 	}else{
 		n = atoi(sFile);
 		if(n == 0)
-			flag = 0;
+			flag = 0; //non ho limite nel numero di file da leggere
 		else
-			flag = 1;
+			flag = 1; //ho un limite al numero di file da leggere se n != 0
 	}
 	getcwd(currDir, PATH_MAX);
 	int writtenRequests = navigateFileSystem(buf, n, flag, type, request_flags); //navigo FS ed inserisco le richieste
@@ -305,9 +309,9 @@ int buildMultipleWriteRequest(int type, char* arg, int request_flags){
 }
 
 void getToSendRequestsFromCmd(int argc, char* const* argv){
-	char o;
+	char o; //tiene l'opzione corrente
 
-	optind = 1;
+	optind = 1; //resetto l'indice di getopt per eseguire correttamente la scansione
 	while((o = getopt(argc, argv, ALL_OPTIONS)) != -1){
 		switch(o){
 			case 'w': buildMultipleWriteRequest(WRITE_FILE, optarg, 0);
@@ -316,9 +320,8 @@ void getToSendRequestsFromCmd(int argc, char* const* argv){
 					  break;
 			case 'W': buildInsertRequest(WRITE_FILE, optarg, 0);
 					  break;
-			case 'R': //printf("Ciao\n");
+			case 'R': 
 					  buildReadNRequest(READ_N_FILE, optarg, 0);
-					  //printf("Ciao2\n");
 					  break;
 			case 'c': buildInsertRequest(REMOVE_FILE, optarg, 0);
 					  break;

@@ -9,6 +9,12 @@ void msleep(int);
 //utility per eliminare caratteri '\r' e '\n' da una stringa
 void myStrNCpy(char *, char *, int);
 
+/*
+	trasformazione da stringa a numero, se possibile:
+	ritorna < 0 in caso di errore e setta errno, il valore altrimenti
+*/
+long isNumber(const char*);
+
 //ripulisce il buffer
 void clearBuffer(char[], int);
 

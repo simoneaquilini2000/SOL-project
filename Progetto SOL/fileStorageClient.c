@@ -16,8 +16,8 @@
 #include "generic_queue.h"
 #include "serverAPI.h"
 
-ClientConfigInfo c; // struttura che mi conterrà le informazioni di configurazione del client
-GenericQueue toSendRequestQueue; //coda di richieste da dare al server
+extern GenericQueue toSendRequestQueue; //coda di richieste da dare al server
+ClientConfigInfo c; //struttura che mantiene informazioni di configurazione del client
 
 void printMainRequestInfo(int ris, MyRequest *actReq){
 	printf("Stampo informazioni post esecuzione della richiesta:\n");
@@ -35,14 +35,11 @@ int sendRequests(){
 
 	while(isEmpty(toSendRequestQueue) == 0){
 		MyRequest *actReq = (MyRequest*) pop(&toSendRequestQueue);
-		//printf("Prendo richiesta\n");
 		if(actReq == NULL)
 			return -1;
-		
 		printf("\n");
 		switch(actReq->type){
 			case WRITE_FILE:
-				//ris = openFile(actReq->request_content, O_CREAT);
 				printf("Inizio richiesta WRITE FILE\n"); 
 				ris = writeFile(actReq->request_content, NULL);
 				if(c.printEnable){
@@ -61,6 +58,10 @@ int sendRequests(){
 				printf("Fine richiesta READ FILE\n");
 				if(ris < 0)
 					break;
+
+				//creo buffer con "puppa!"
+				//concatenavo buffer al contenunto letto
+				//scrivevo un file in append con questo contenuto 
 				MyFile toSave;
 				memset(&toSave, 0, sizeof(toSave));
 				strcpy(toSave.filePath, actReq->request_content);
@@ -73,7 +74,6 @@ int sendRequests(){
 				if(saveFile(toSave, c.saveReadFileDir) == -1){
 					printf("Errore salvataggio file!");
 				}
-				//freeFile((void*)&toSave);
 				free(toSave.content);
 				free(readDataBuffer);
 				readDataSize = 0;
@@ -116,25 +116,10 @@ int sendRequests(){
 				la server API\n");
 				break;
 		}
+		freeRequest(actReq);
 		msleep(c.requestInterval);
 	}
 	return 0;
-}
-
-void testFileNonTestuali(const char *pathname){
-	char *r;
-	MyFile f;
-	memset(&f, 0, sizeof(f));
-
-	//printf("Pathname=%s\n", pathname);
-	
-	strncpy(f.filePath, pathname, strlen(pathname));
-	f.filePath[strlen(f.filePath)] = '\0';
-	f.dim = readFileContent(pathname, &f.content);
-
-	//f.dim = strlen(f.content);
-
-	saveFile(f, "./TestFileBinari");
 }
 
 int main(int argc, char *const *argv){
@@ -157,123 +142,17 @@ int main(int argc, char *const *argv){
 	}
 	int z, y, t;
 	c = getConfigInfoFromCmd(argc, argv); //parso il cmd cercando solo le opzioni di config
-	printConfigInfo(c);
-
-	
+	printConfigInfo(c); // c mi conterrà le informazioni di configurazione del client
 
 	getToSendRequestsFromCmd(argc, argv);
-	//printQueue(toSendRequestQueue);
-
-	//return 0;
-
-	//testFileNonTestuali("progetto_SOL_20-21.pdf");
 
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
-
-	/*int ris = openFile("../../Teoria/03-Interfaccia SO e processi.pdf", O_CREAT);
-	printf("%d %d\n", ris, errno);
-
-	ris = writeFile("../../Teoria/03-Interfaccia SO e processi.pdf", NULL);
-	printf("%d %d\n", ris, errno);
-
-	ris = readNFiles(-1, c.saveReadFileDir);
-	printf("%d %d\n", ris, errno);*/
 
 
 
 	int result = sendRequests();
 
-	/*int ris;
-	char *buf;
-	size_t size;
-
-	msleep(c.requestInterval);
-
-	ris = openFile("fileDaLeggere.txt", O_CREAT);
-	printf("%d %d\n", ris, errno);
-
-	msleep(c.requestInterval);
-
-	ris = writeFile("fileDaLeggere.txt", NULL);
-	printf("%d %d\n", ris, errno);
-
-	msleep(c.requestInterval);
-
-	ris = readFile("fileDaLeggere.txt", &buf, &size);
-	printf("%d %d\n", ris, errno);
-
-	msleep(c.requestInterval);
-
-	ris = appendToFile("fileDaLeggere.txt", buf, strlen(buf), NULL);
-	printf("%d %d\n", ris, errno);
-
-	msleep(c.requestInterval);
-
-	ris = readNFiles(1, c.saveReadFileDir);
-	printf("%d %d\n", ris, errno);
-
-	msleep(c.requestInterval);
-
-	ris = closeFile("fileDaLeggere.txt");
-	printf("%d %d\n", ris, errno);
-
-	msleep(c.requestInterval);
-
-	ris = removeFile("fileDaLeggere.txt");
-	printf("%d %d\n", ris, errno);
-
-	msleep(c.requestInterval);*/
-
 	int x = closeConnection(c.socketName);
 	printf("Esito terminazione connesione: %d\n", x);
-	//toSendRequestQueue = getToSendRequestsFromCmd(argc, argv);
-
-	//printf("Connesso al server = %d\n errno = %d\n", a, errno);
-
-	/*z = openFile("fileDaLeggere.txt", O_CREAT);
-	printf("%d %d\n", z, errno);
-
-	z = openFile("fileDaLeggere2.txt", O_CREAT);
-	printf("%d %d\n", z, errno);
-
-	z = openFile("QuadratoRosso.png", O_CREAT);
-	printf("%d %d\n", z, errno);
-
-	z = openFile("fileDaLeggere4.txt", O_CREAT);
-	printf("%d %d\n", z, errno);
-
-	z = openFile("progetto_SOL_20-21.pdf", O_CREAT);
-	printf("%d %d\n", z, errno);*/
-
-	//z = openFile("fileDaLeggere.txt", O_CREAT);
-	//printf("%d %d\n", z, errno);
-	//char buffer[1024];
-
-	//strcpy(buffer, "Ciao mamma!");
-
-	/*z = writeFile("fileDaLeggere.txt", NULL);
-	printf("%d %d\n", z, errno);
-
-	z = writeFile("progetto_SOL_20-21.pdf", NULL);
-	printf("%d %d\n", z, errno);
-
-	//z = appendToFile("progetto_SOL_20-21.pdf", buffer, strlen(buffer), NULL);
-	//printf("%d %d\n", z, errno);
-
-	z = writeFile("QuadratoRosso.png", NULL);
-	printf("%d %d\n", z, errno);
-
-	z = readNFiles(-1, c.saveReadFileDir);
-	printf("%d %d\n", z, errno);
-
-	//z = writeFile("fileDaLeggere3.txt", NULL);
-	//printf("%d %d\n", z, errno);
-
-	/*z = writeFile("fileDaLeggere.txt", NULL);
-	printf("%d %d\n", z, errno);*/
-	//srand(time(NULL));
-	//sleep(2);
-
-	
 	return 0;
 }

@@ -27,7 +27,8 @@ clientConf[2]=$confClient3
 clientConf[3]=$confClient4
 clientConf[4]=$confClient4
 saveDir=$1
-#echo $testType    
+
+   
 ./fileStorageServer ./ServerConf/config2.txt &
 serverPid=$(pidof fileStorageServer)
 

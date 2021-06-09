@@ -101,13 +101,9 @@ int saveFile(MyFile f, const char dirname[]){
 		return -1;
 	}
 
-	//printf("WOW2 = %s\n", f.filePath);
-
 	char *fileName = getFileNameFromPath(f.filePath);
 
-	//printf("WOW = %s\n", fileName);
-
-	int file_fd = open(fileName, O_RDWR | O_CREAT, 0700);
+	int file_fd = open(fileName, O_RDWR | O_CREAT | O_TRUNC, 0700);
 
 	if(file_fd == -1){
 		perror("Errore open!\n");
@@ -165,7 +161,6 @@ int readFileContent(const char *pathname, char **fileContent){
 	if(ris == NULL) //ris == NULL significa che pathname non è stato trovato
 		return -1;
 
-	*fileContent = malloc(1);
 	int act_dim = 1, precDim;
 	int fileDim = 0;
 	int charToAdd;
