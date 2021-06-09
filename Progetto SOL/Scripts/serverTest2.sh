@@ -2,7 +2,8 @@
 # Per l'esecuzione dello script si richiede
 # un parametro:
 #   - nome della cartella da
-#     creare, quindi non deve già esistere,
+#     creare(se già esiste verrà rimossa e ricreata con nuovo contenuto
+#     altrimenti verrà semplicemente creata)
 #     in cui salvare i file che riportano
 #     l'output del singolo client.
 #
@@ -17,7 +18,7 @@ confClient2="$commonConf -i ../Processi,0 -W ../Processi/processi.pdf -o clientC
 confClient3="$commonConf -d ./SaveReadFileDirectory -r clientConfig.c -i ../../../../Primo_Anno,4 \
     -w ../../../../Primo_Anno,2"
 confClient4="$commonConf -d ./SaveReadFileDirectory/AllCacheFilesTest2 -i ..,5 -w ..,5 -R0"
-confClient5="$commonConf -t 2000 -d ./SaveReadFileDirectory -i ..,10 \
+confClient5="$commonConf -t 200 -d ./SaveReadFileDirectory -i ..,10 \
                     -C ./ConfigAndUtilities/serverInfo.c -R1"
 
 #setup array di configurazioni client
@@ -25,28 +26,28 @@ clientConf[0]=$confClient1
 clientConf[1]=$confClient2
 clientConf[2]=$confClient3
 clientConf[3]=$confClient4
-clientConf[4]=$confClient4
-saveDir=$1
+clientConf[4]=$confClient5
+saveDir=$1 #ottengo dal primo parametro la cartella dove salvare gli output de clients
 
    
 ./fileStorageServer ./ServerConf/config2.txt &
-serverPid=$(pidof fileStorageServer)
+serverPid=$(pidof fileStorageServer) #ottengo il PID del server in modo da poter segnalarlo
 
-
-rm -f $saveDir/*
+#rimuovo saveDir(se non esiste fallirà)
+rm -f $saveDir/* 
 rmdir $saveDir
 
 if mkdir $saveDir;then
     for((i=0;$i < ${#clientConf[@]};i++));do
         nomeFile=$saveDir/outputClient$i.txt
         if touch $nomeFile;then
-            ./fileStorageClient ${clientConf[$i]} > $nomeFile &
+            ./fileStorageClient ${clientConf[$i]} > $nomeFile & #redirigo output client sul file
         else
             echo 'Errore creazione file'
         fi
-        sleep 1
+        sleep 1 #intervallo di creazione dei clients
     done
-    kill -s SIGHUP $serverPid
+    kill -s SIGHUP $serverPid #invio SIGHUP al server
     wait $serverPid
 else
     echo 'Errore creazione directory'

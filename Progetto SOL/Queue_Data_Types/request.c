@@ -4,23 +4,6 @@
 #include<stdlib.h>
 #include "request.h"
 
-/*MyRequest createRequest(int cfd, char* r){
-	MyRequest newReq;
-
-	newReq.comm_socket = cfd;
-	newReq.request_dim = strlen(r);
-	newReq.request_content = malloc((newReq.request_dim + 1) * sizeof(char));
-	if(newReq.request_content == NULL){
-		perror("Errore malloc!");
-		exit(EXIT_FAILURE);
-	}
-	strncpy(newReq.request_content, r, strlen(r));
-	newReq.timestamp = time(NULL);
-	newReq.type = getRequestType(newReq.request_content);
-
-	return newReq;
-}*/
-
 int requestComparison(void* r1, void *r2){
 	MyRequest req1 = *(MyRequest*)r1;
 	MyRequest req2 = *(MyRequest*)r2;

@@ -43,7 +43,8 @@ void printConfigInfo(ClientConfigInfo);
 /*
 	Tokenizza la stringa usando come delimitatore il carattere ','
 	e crea per ognuna di queste una richiesta del tipo passato come primo parametro,
-	inserendola nella coda di richieste, con i flag specificati(3° parametro)
+	inserendola nella coda di richieste, con i flag specificati(3° parametro).
+	Ritorna il numero di richieste effettivamente inserite nella coda.
 */
 int buildInsertRequest(int, char*, int);
 
@@ -54,20 +55,24 @@ int buildInsertRequest(int, char*, int);
 	se n=0 o non specificato leggo ed inserisco richieste del tipo e con i
 	flag specificati per tutti i file nella
 	directory rootpath(per distinguere i 2 casi ho il terzo parametro che funge da flag).
+	Ritorna il numero dei file per i quali ha inserito una richiesta in coda,
+	 0 in caso di errore
 */
 int navigateFileSystem(char *, int, int, int, int);
 
 /*
 	Usa la navigateFileSystem per inserire richieste
 	di un certo tipo ed i rispettivi flags.
-	Serve a gestire le opzioni -w e -i(aggiuntiva)
+	Serve a gestire le opzioni -w e -i(aggiuntiva).
+	Ritorna 0 se n > 0 è stato specificato ed ho effettivamente scritto
+	n richieste, altrimenti il numero di richieste scritte.
 */
 int buildMultipleWriteRequest(int , char* , int);
 
 /*
 	Inserisce nella coda una richiesta di tipo READ_N_FILE 
 	con eventuale parametro n nel campo request_content della struttura
-	ed i flags
+	ed i flags.Ritorna 0 sempre
 */
 int buildReadNRequest(int, char*, int);
 

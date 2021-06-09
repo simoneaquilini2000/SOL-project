@@ -34,6 +34,7 @@ void filePrint(void* info){
 
 	printf("FilePath: %s\n", f.filePath);
 	printf("Dimension: %d\n", f.dim);
+	//verifico se f.content è stato allocato o meno(non sto verificando se sia vuoto o meno)
 	if(f.content == NULL)
 		printf("Content(NULL)\n");
 	else
@@ -52,15 +53,13 @@ void freeFile(void* s){
 	MyFile *f = (MyFile*)s;
 
 	if(f->content != NULL)
-		free(f->content);
-	free(f); 
+		free(f->content); //libero il contenuto
+	free(f); //libero il nodo informativo
 }
 
 char* getFileNameFromPath(char path[]){
-	//printf("Original path: %s\n", path);
-
 	char *token = strtok(path, "/");
-	char *ris;
+	char *ris = NULL; //conterrà il nome del file
 	int dim = 0;
 
 	/*
@@ -68,18 +67,16 @@ char* getFileNameFromPath(char path[]){
 		che mi rappresenterà il nome del file su cui opero
 	*/
 	while(token != NULL){
-		//printf("Ottengo token= %s\n", token);
 		ris = malloc(strlen(token) + 1);
-		memset(ris, 0, strlen(token));
+		memset(ris, 0, strlen(token) + 1);
 		strcpy(ris, token);
 		dim = strlen(ris);
 		ris[dim] = '\0';
-		//printf("Ris= %s\n", ris);
 		token = strtok(NULL, "/");
+		//se non ho più token disponibili, l'ultimo salvato in ris sarà il nome del file
 		if(token != NULL)
 			free(ris);
 	}
-	//printf("Real filename: %s\n", ris);
 	return ris;
 }
 
@@ -90,19 +87,26 @@ int saveFile(MyFile f, const char dirname[]){
 	char *ris = realpath(dirname, absPath); 
 	//la cartella deve già esistere, altrimenti realpath tornerà NULL
 
-	getcwd(previousCwd, 1024);
+	//mi salvo la cwd in modo da tornarvi una volta eseguito il salvataggio
+	getcwd(previousCwd, 1024); 
 
 	if(ris == NULL){
 		printf("Cartella specificata non esistente\n");
 		return -1;
 	}
+
 	if(chdir(absPath) == -1){
 		printf("Errore chdir\n");
 		return -1;
 	}
 
+	//estrapolo nome del file dal path
 	char *fileName = getFileNameFromPath(f.filePath);
 
+	/*
+		Se il file non esiste lo creo con permessi di r/w;
+		se invece esiste ne sovrascrivo il contenuto
+	*/
 	int file_fd = open(fileName, O_RDWR | O_CREAT | O_TRUNC, 0700);
 
 	if(file_fd == -1){
@@ -111,36 +115,17 @@ int saveFile(MyFile f, const char dirname[]){
 		return -1;
 	}
 
+	//scrivo il contenuto
 	if((l = writen(file_fd, f.content, f.dim)) == -1){
 		perror("Errore write!\n");
 		chdir(previousCwd);
 		return -1;
 	}
 
-	//printf("Dovevo scrivere %d caratteri, \
-	 ma ho scritto %d caratteri cioè %s\n", f.dim, l, f.content);
-
+	//chiudo il descrittore
 	close(file_fd);
-	/*FILE *toWrite = fopen(fileName, "wb");
 
-	if(toWrite == NULL){
-		perror("Errore open!\n");
-		chdir(previousCwd);
-		return -1;
-	}
-
-	if((l = fwrite(f.content, sizeof(char), f.dim, toWrite)) == -1){
-		perror("Errore write!\n");
-		chdir(previousCwd);
-		return -1;
-	}
-
-	if(fclose(toWrite) != 0){
-		perror("Errore close!\n");
-		chdir(previousCwd);
-		return -1;
-	}*/
-
+	//torno alla cwd
 	if(chdir(previousCwd) == -1){
 		return -1;
 	}
@@ -148,38 +133,37 @@ int saveFile(MyFile f, const char dirname[]){
 }
 
 int readFileContent(const char *pathname, char **fileContent){
-	if(pathname == NULL)
+	if(pathname == NULL) //pathname non può essere NULL
 		return -1;
 
-	char absPath[PATH_MAX];
+	char absPath[PATH_MAX]; //buffer dove otterrò il path assoluto del file, se esiste
 	char recBuf[1024];
 	memset(recBuf, 0, 1024);
 	char *ris = realpath(pathname, absPath);
 
-	//Leggo il contenuto del file(che si trova in absPath) e modifico fileContent
-
-	if(ris == NULL) //ris == NULL significa che pathname non è stato trovato
+	if(ris == NULL) //ris == NULL significa che pathname non è stato trovato(file inesistente)
 		return -1;
 
 	int act_dim = 1, precDim;
 	int fileDim = 0;
 	int charToAdd;
 
-	FILE *fp = fopen(absPath, "rb");
+	FILE *fp = fopen(absPath, "rb");//leggo file in modalità binaria
 
-    // checking if the file exist or not
+    // controllo se il file esiste o meno
     if (fp == NULL)
     {
         printf("(%d) - File Not Found!\n", getpid());
         return -1;
     }
 
-    fseek(fp, 0L, SEEK_END);
+    fseek(fp, 0L, SEEK_END); //uso libreria I/O per ottenere la lunghezza del contenuto del file
 
     long int expectedFileSize = ftell(fp);
 
     fclose(fp);
 
+	//alloco buffer di ricezione del contenuto del file
 	*fileContent = (char*) calloc(expectedFileSize + 1, sizeof(char));
 
 	int file_fd = open(absPath, (O_RDWR | O_APPEND));
@@ -189,61 +173,12 @@ int readFileContent(const char *pathname, char **fileContent){
 		return -1;
 	}
 
+	//leggo il contenuto del file
 	fileDim = readn(file_fd, *fileContent, expectedFileSize);
-
-	//printf("Ho letto %d caratteri cioè %s\n", fileDim, *fileContent);
-
-	/*while((charToAdd = readn(file_fd, recBuf, 1024)) > 0){
-		printf("Ho letto %d caratteri\n", charToAdd);
-		precDim = fileDim;
-		 //aumento numero di byte letti
-		//precDim = strlen(*fileContent) + 1;
-		while(precDim + charToAdd >= act_dim){
-			//printf("Rialloco\n");
-			*fileContent = realloc(*fileContent, sizeof(char) * (2 * act_dim));
-			if(*fileContent == NULL){
-				close(file_fd);
-				printf("BAB\n");
-				return -1;
-			}
-			act_dim *= 2;
-		}
-		memcpy((*fileContent) + fileDim, recBuf, charToAdd);
-		fileDim += charToAdd;
-		memset(recBuf, 0, 1024);
-		*fileContent[fileDim] = '\0';
-	}
-
-	printf("File dimension= %d\n", fileDim);
 
 	close(file_fd);
 
-	/*FILE *toRead = fopen(absPath, "rb");
-
-	while((charToAdd = fread(recBuf, sizeof(char), 1024, toRead)) > 0){
-		//printf("Ho letto %d caratteri\n", charToAdd);
-		precDim = fileDim;
-		 //aumento numero di byte letti
-		//precDim = strlen(*fileContent) + 1;
-		while(precDim + charToAdd >= act_dim){
-			//printf("Rialloco\n");
-			*fileContent = realloc(*fileContent, sizeof(char) * (2 * act_dim));
-			if(*fileContent == NULL){
-				fclose(toRead);
-				return NULL;
-			}
-			act_dim *= 2;
-		}
-		memcpy((*fileContent) + fileDim, recBuf, charToAdd);
-		fileDim += charToAdd;
-		//fileContent[fileDim] = '\0';
-	}
-
-	fclose(toRead);*/
-
-	//printf("Contenuto: %s\n", fileContent);
-
-	return fileDim;
+	return fileDim; //ritorno il numero dei byte letti(-1 in caso di errore di lettura)
 }
 
 //traduzione da path relativo ad assoluto
@@ -252,9 +187,10 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
 		strcpy(absPath, ""); //errore sui parametri di input
         return;
 	}
-    char currWorkDir[1024], pathBackup[1024];
+    char currWorkDir[1024]; 
+	char pathBackup[1024];
     getcwd(currWorkDir, 1024);
-    strncpy(pathBackup, pathname, strlen(pathname));
+    strncpy(pathBackup, pathname, strlen(pathname)); //backup del pathname, modificato da strtok
 
     //salvo preventivamente la cwd in modo da poter tornare qui in modo sicuro
 
@@ -271,17 +207,15 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
 
     if(strcmp(token, pathBackup) == 0){ //non ho '/' quindi ho un solo token
         getcwd(absPath, len);
-		//printf("BIB\n");
         if(strlen(absPath) + strlen(pathBackup) + 2 < len){
             strcat(absPath, "/");
-            strncat(absPath, pathBackup, strlen(pathBackup));
+            strncat(absPath, pathBackup, strlen(pathBackup)); //appendo al path, il nome del file
         }else
 			strcpy(absPath, ""); //errore ho sforato il massimo spazio disponibile
         return;
     }
 
     while(token != NULL){
-		//printf("Token= %s\n", token);
         fileName = malloc(strlen(token) + 1);
 		memset(fileName, 0, strlen(token) + 1);
         strncpy(fileName, token, strlen(token));
@@ -289,9 +223,9 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
         token = strtok(NULL, "/");
         if(token != NULL){
 			if(chdir(fileName) == -1){
-				//printf("BAB\n");
 				strcpy(absPath, "");
-				if(chdir(currWorkDir) == -1){
+				//provo a tornare alla cwd, segnalando l'errore: se non ci riesco ho errore fatale
+				if(chdir(currWorkDir) == -1){ 
 					perror("Errore fatale in cambio di directory!\n");
 					exit(EXIT_FAILURE);
 				}
@@ -300,11 +234,10 @@ void getAbsPathFromRelPath(char *pathname, char absPath[], int len){
             free(fileName);
 		}
     }
+
     //una volta finito il ciclo metto in un buffer la cwd e ci appendo il nome del file(quello sarà il mio path assoluto)
     getcwd(absPath, len);
     if(strlen(absPath) + strlen(fileName) + 2 < len){
-		//printf("BOB\n");
-		//printf("Finora ho %s\n", absPath);
         strcat(absPath, "/");
         strncat(absPath, fileName, strlen(fileName));
     }else{

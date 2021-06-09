@@ -134,7 +134,7 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 	char *tokenBackup; //tiene lo stato di tokenizzazione di arg
 	char *token = strtok_r(arg, ",", &tokenBackup); //token corrente di arg
 	char buf[PATH_MAX];
-	int ris = 0;
+	int ris = 0, counter = 0;
 
 	while(token != NULL){
 		MyRequest *r = malloc(sizeof(MyRequest)); //creo richiesta
@@ -167,6 +167,7 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 				perror("push error!");
 				exit(EXIT_FAILURE);
 			}
+			counter++;
 		}else{
 			free(r); //se la richiesta non è stata inserita, libero la struttura per evitare leaks
 		}
@@ -174,7 +175,7 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 		ris = 0;
 		token = strtok_r(NULL, ",", &tokenBackup); //prendo prossimo token
 	}
-	return 0;
+	return counter;
 }
 
 int buildReadNRequest(int type, char *arg, int request_flags){
@@ -300,12 +301,13 @@ int buildMultipleWriteRequest(int type, char* arg, int request_flags){
 	int writtenRequests = navigateFileSystem(buf, n, flag, type, request_flags); //navigo FS ed inserisco le richieste
 	chdir(currDir);
 	//printf("Ora la cwd è: %s\n", currDir); //devo ristabilire cwd
-	if(flag && writtenRequests != n)
-		return -1;
-	else if(flag && writtenRequests == n)
-		return 0;
-	else
-		return writtenRequests;
+	if(flag){
+		if(writtenRequests == n)
+			return 0;
+		else
+			return writtenRequests;
+	}
+	return writtenRequests;
 }
 
 void getToSendRequestsFromCmd(int argc, char* const* argv){

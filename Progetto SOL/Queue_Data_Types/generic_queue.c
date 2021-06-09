@@ -26,29 +26,31 @@ GenericQueue createQueue(int (*comp) (void*, void*), void (*print) (void*), void
 	if(comp == NULL)
 		q.comparison = defaultComparison;
 	else
-		q.comparison = comp;
+		q.comparison = comp;//setto la funzione di comparazione passata come parametro
 
 	if(print == NULL)
 		q.printFunct = defaultPrinter;
 	else
-		q.printFunct = print;
+		q.printFunct = print;//setto la funzione di stampa passata come parametro
 
 	if(fr == NULL)
 		q.freeFunct = defaultFreeFunct;
 	else
-		q.freeFunct = fr;
+		q.freeFunct = fr;//setto la funzione di liberazione passata come parametro
 
 	q.queue.head = NULL;
 	q.queue.tail = NULL;
-	q.size = 0;
+	q.size = 0; //inizialmente la coda è vuota
 
 	return q;
 }
 
 static GenericNode* createNode(void *ptr){
+	if(ptr == NULL) //non posso creare un nodo con contenuto informativo NULL
+		return NULL;
 	GenericNode *x = (GenericNode*) malloc(sizeof(GenericNode));
 	memset(x, 0, sizeof(GenericNode));
-	if(x == NULL)
+	if(x == NULL) //errore se la malloc fallisce
 		return NULL;
 	x->info = ptr; //assegno il puntatore alla struttura al campo info del nodo
 	x->next = NULL;
@@ -62,10 +64,10 @@ int push(GenericQueue *q, void *ptr){
 	if(toAdd == NULL) 
 		return -1;
 
-	if(q->queue.head == NULL){
+	if(q->queue.head == NULL){//inserimento in coda quando questa è vuota
 		q->queue.head = toAdd;
 		q->queue.tail = q->queue.head;
-	}else{
+	}else{ //inserimento in coda standard
 		q->queue.tail->next = toAdd;
 		q->queue.tail = toAdd;
 	}
@@ -82,14 +84,14 @@ void* pop(GenericQueue *q){
 	GenericNode *result = q->queue.head;
 	void* ris = result->info;
 
-	if(q->queue.head == q->queue.tail){
+	if(q->queue.head == q->queue.tail){//rimozione in testa quando la coda ha un solo elemento
 		q->queue.tail = NULL;
 		q->queue.head = NULL;
 	}else{
-		q->queue.head = q->queue.head->next;
+		q->queue.head = q->queue.head->next;//rimozione in testa
 	}
 
-	free(result);
+	free(result);//libero il nodo ma non i puntatori che questo contiene
 	q->size--;
 
 	return ris;
@@ -107,25 +109,23 @@ void deleteElement(GenericQueue *q, void *ptr){
 
 	while(corr != NULL){
 		if(q->comparison(corr->info, ptr) == 1){
-			if(prec == NULL){
+			if(prec == NULL){//eliminazione in testa
 				toDel = q->queue.head;
 				q->queue.head = q->queue.head->next;
 				q->freeFunct(toDel->info); //libero la struttura
 				free(toDel); //libero il nodo
 				corr = q->queue.head;
 			}else{
-				if(corr == q->queue.tail){
+				if(corr == q->queue.tail){//eliminazione in coda
 					toDel = corr;
 					q->queue.tail = prec;
 					q->queue.tail->next = corr->next;
 					corr = corr->next;
 					q->freeFunct(toDel->info);
 					free(toDel);
-				}else{
+				}else{ //eliminazione "nel mezzo"
 					toDel = corr;
-					//q->printFunct(toDel->info);
 					corr = corr->next;
-					//q->printFunct(toDel->info);
 					prec->next = corr;
 					q->freeFunct(toDel->info);
 					free(toDel);
@@ -160,7 +160,6 @@ void printQueue(GenericQueue q){
 	GenericNode *corr = q.queue.head;
 
 	while(corr != NULL){
-		//printf("sto stampando\n");
 		q.printFunct(corr->info);
 		corr = corr->next;
 	}
@@ -168,15 +167,10 @@ void printQueue(GenericQueue q){
 }
 
 void freeQueue(GenericQueue *q){
-
-	//GenericNode* corr = q->queue.head;
 	GenericNode* toDel;
 
-	//free(q->queue.tail);
-
 	while(q->queue.head != NULL){
-		//printf("Sto eliminando");
-		toDel = q->queue.head;
+		toDel = q->queue.head;//mi salvo in toDel il nodo da ripulire
 		q->queue.head = q->queue.head->next;
 		q->freeFunct(toDel->info);
 		free(toDel);

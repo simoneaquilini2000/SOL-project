@@ -21,7 +21,10 @@ typedef struct fi{
 	LastSuccessfulOperation lastSucceedOp; //ultima operazione eseguita con successo su tale file
 }MyFile;
 
-//verifica se due file sono uguali, confrontandone il filepath(assoluto)
+/*
+	Verifica se due file sono uguali, confrontandone il filepath(assoluto).
+	Ritorna 1 se sono lo stesso file, 0 altrimenti
+*/
 int fileComparison(void*, void *);
 
 //funzione per la stampa di un file
@@ -30,10 +33,17 @@ void filePrint(void*);
 //funzione di liberazione di memoria di un singolo file
 void freeFile (void*);
 
-//funzione che estrapola il nome del file da un path
+/*
+	Funzione che estrapola il nome del file da un path
+	tokenizzandolo in base al carattere '/' e prendendo
+	come nome del file l'ultimo token != NULL.
+	Se il path è NULL, la funzione restituirà NULL.
+*/
 char* getFileNameFromPath(char[]);
 
 //funzione che esegue il salvataggio di un file in una directory
+//Ritorna -1 in caso di errore(file inesistente, errori nel cambio di directory ecc...)
+//1 altrimenti
 int saveFile(MyFile, const char[]);
 
 /*
@@ -46,7 +56,8 @@ int readFileContent(const char *, char **);
 /*
 	Funzione di traduzione da path relativo ad assoluto
 	(il risultato sarà salvato nel secondo parametro, la cui lunghezza è
-	rappresentata dal terzo)
+	rappresentata dal terzo).
+	In caso di errore il risultato sarà una stringa vuota.
 */
 void getAbsPathFromRelPath(char *, char[], int);
 

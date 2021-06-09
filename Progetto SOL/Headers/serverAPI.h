@@ -19,7 +19,7 @@ int openConnection(const char*, int, const struct timespec);
 	ritorna 0 in caso di successo, -1 in caso di errore e setta errno:
 		errno = EBADR -> la close ha fallito non a causa di una interruzione
 		errno = EINVAL -> nome del socket da chiudere diverso da quello specificato in configurazione
-		errno = EPERM -> non posso disconnettermi dal server se non mi ci ero precendentemente connesso
+		errno = EPERM -> non posso disconnettermi dal server se non ero precendentemente connesso
 */
 int closeConnection(const char*);
 
@@ -31,9 +31,9 @@ int closeConnection(const char*);
 		errno = EAGAIN -> errore nella read o write della richiesta o risposta
 		errno = EEXIST -> O_CREAT è specificato, ma il file su cui operare è già presente in cache
 		errno = ENOENT -> O_CREAT non specificato ed il file su cui operare non è presente in cache
-		errno = EINVAL -> flag diverso sia da 0 che da O_CREAT
+		errno = EINVAL -> flag diverso sia da 0 che da O_CREAT oppure file su cui operare == NULL
 		errno = EPERM -> file da aprire è già aperto
-		errno = ENOSPC -> l'operazione non è stata effettuata perchè la sua esecuzione causerebbe
+		errno = ENOSPC -> l'operazione non è stata effettuata con successo perchè la sua esecuzione causerebbe
 						  il fallimento dell'algoritmo di rimpiazzamento, in quanto c'è il bisogno
 						  (in seguito all'operazione richiesta) di rimpiazzare file, ma non ce n'è
 						  l'effettiva possibilità
@@ -55,7 +55,7 @@ int readFile(const char*, void**, size_t*);
 /*
 	Legge N file dal server(se N <= 0 o > del numero di file nel server
 	li legge tutti) e li memorizza nella cartella passata come secondo 
-	parametro(se != NULL).Ritorna il numero di file letti con successo,
+	parametro(se != NULL e != "").Ritorna il numero di file letti con successo,
 	-1 altrimenti e setta errno:
 		errno = EAGAIN -> errore di read/write
 		errno = EIO -> cartella dove salvare i file inesistente od errore durante il salvataggio del file
@@ -65,7 +65,8 @@ int readNFiles(int, const char*);
 /*
 	Scrive il file(il cui path è passato come primo parametro) nel server.
 	Ritorna 0 in caso di succeso, -1 altrimenti e setta errno:
-		errno = ENOENT -> file da scrivere non trovato lato client o lato server
+		errno = ENOENT -> file da scrivere non trovato lato server
+		errno = EIO -> errore nella lettura del file(file non trovato ecc...)
 		errno = EAGAIN -> errore di read/write
 		errno = EACCES -> file non aperto
 		errno = EPERM -> prima devi eseguire con successo openFile(pathName, O_CREAT)
@@ -81,8 +82,6 @@ int writeFile(const char*, const char*);
 		errno = EAGAIN -> errore read/write
 		errno = EACCES -> file da appendere non aperto
 		errno = ENOENT -> file specificato non presente in cache
-		errno = EPERM -> non posso estendere un file se la sua dimensione superasse 
-						il maxStorageSpace della cache
 		errno = ENOSPC -> operazione non eseguita in quanto la sua esecuzione
 						  comporterebbe il fallimento dell'algoritmo di rimpiazzamento 
 */

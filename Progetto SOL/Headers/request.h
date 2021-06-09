@@ -6,7 +6,7 @@
 
 //enum rappresentante ogni possibile tipo di richiesta
 typedef enum e{
-	OPEN_FILE, //corrisponde alla richiesta di aprire un file
+	OPEN_FILE, //corrisponde alla richiesta di aprire un file(sia con O_CREAT che senza)
 	READ_FILE, //richiesta di lettura di un file
 	CLOSE_FILE, //richiesta di chiusura di un file
 	REMOVE_FILE, //richiesta di rimozione di un file
@@ -16,18 +16,20 @@ typedef enum e{
 }RequestType; 
 
 typedef struct r{
-	int comm_socket; //descrittore che indica il client della richiesta
+	int comm_socket; //descrittore che indica il client della richiesta(settato dal server)
 	int request_dim; //dimensione della richiesta
 	time_t timestamp; //orario di invio della richiesta
-	char request_content[PATH_MAX]; //contenuto della richiesta(argomenti su cui opera)
+	char request_content[PATH_MAX]; //contenuto della richiesta(argomento su cui opera)
 	RequestType type; //tipo di richiesta
 	int flags; //flag opzionali(O_CREAT o 0 per la OPEN_FILE)
 }MyRequest;
 
-//restituisce una richiesta
-//MyRequest createRequest(int, char*);
-
-//verifica se due richieste sono uguali, confrontandone il contenuto della richiesta
+/*
+	Verifica se due richieste sono uguali,
+	 confrontandone client,
+	 tipo e timestamp.
+	 Ritorna 1 se sono uguali, 0 altrimenti
+*/
 int requestComparison(void*, void *);
 
 //stampa di una richiesta 

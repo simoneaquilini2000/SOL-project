@@ -4,14 +4,12 @@
 */
 
 typedef struct i{
-	//int client_pid; //PID del client che ha effettuato la connessione
 	int cfd; //descrittore dove avviene lo scambio di dati(lato server, cioè il
 			// descrittore restituito dalla accept)
 }MyDescriptor;
 
-
-
-//verifica se due descrittori sono uguali, confrontandone il communication descriptor
+//verifica se due descrittori sono uguali, confrontandone il communication descriptor.
+//Ritorna 1 se sono uguali, 0 alteimenti
 int descriptorComparison(void*, void *);
 
 //esegue la stampa di un descrittore della coda

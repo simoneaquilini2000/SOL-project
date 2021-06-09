@@ -2,7 +2,8 @@
 # Per l'esecuzione dello script si richiede
 # un parametro:
 #   - nome della cartella da
-#     creare, quindi non deve già esistere,
+#     creare(se già esiste verrà rimossa e ricreata con nuovo contenuto
+#     altrimenti verrà semplicemente creata)
 #     in cui salvare i file che riportano
 #     l'output del singolo client.
 #
@@ -24,7 +25,7 @@ clientConf[0]=$confClient1
 clientConf[1]=$confClient2
 clientConf[2]=$confClient3
 clientConf[3]=$confClient4
-clientConf[4]=$confClient4
+clientConf[4]=$confClient5
 saveDir=$1
 
 #creazione shell in bg con valgrind per ottenerne il PID tramite $!
@@ -39,13 +40,13 @@ if mkdir $saveDir;then
     for((i=0;$i < ${#clientConf[@]};i++));do
         nomeFile=$saveDir/outputClient$i.txt
         if touch $nomeFile;then
-            ./fileStorageClient ${clientConf[$i]} > $nomeFile &
+            ./fileStorageClient ${clientConf[$i]} > $nomeFile & #redirigo output client sul file
         else
             echo 'Errore creazione file'
         fi
-        sleep 1
+        sleep 1 #intervallo di creazione dei clients
     done
-    kill -s SIGHUP $serverPid
+    kill -s SIGHUP $serverPid #invio SIGHUP al server
     wait $serverPid
 else
     echo 'Errore creazione directory'
