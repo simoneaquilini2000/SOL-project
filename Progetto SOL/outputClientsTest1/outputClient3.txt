@@ -1,8 +1,8 @@
-Config parameters:
-	printEnable: 1
-	socketName: ./ServerConf/fileStorageSocket
-	saveReadFileDir: ./SaveReadFileDirectory/AllCacheFilesTest1
-	requestInterval: 200
+Parametri di configurazione del client:
+	Stampe abilitate: 1
+	Path socket: ./ServerConf/fileStorageSocket
+	Cartella in cui salvare i file letti: ./SaveReadFileDirectory/AllCacheFilesTest1
+	Attesa(in ms) tra spedizione di due richieste: 200
 Sono connesso al server
 
 Inizio richiesta OPEN FILE
@@ -86,12 +86,12 @@ Stampo informazioni post esecuzione della richiesta:
 Fine richiesta WRITE FILE
 
 Inizio richiesta READ_N_FILE
-In totale ho letto 1053197 bytes
+In totale ho letto dal file storage 1026533 bytes
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 6(0)
 	File di riferimento: 0
-	Esito: 26
-	Numero di file letti: 26
+	Esito: 25
+	Numero di file letti: 25
 
 Fine richiesta READ_N_FILE
 Esito terminazione connesione: 0

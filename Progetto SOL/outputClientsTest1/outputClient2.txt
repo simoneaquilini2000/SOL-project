@@ -1,8 +1,8 @@
-Config parameters:
-	printEnable: 1
-	socketName: ./ServerConf/fileStorageSocket
-	saveReadFileDir: ./SaveReadFileDirectory
-	requestInterval: 200
+Parametri di configurazione del client:
+	Stampe abilitate: 1
+	Path socket: ./ServerConf/fileStorageSocket
+	Cartella in cui salvare i file letti: ./SaveReadFileDirectory
+	Attesa(in ms) tra spedizione di due richieste: 200
 Sono connesso al server
 
 Inizio richiesta READ FILE

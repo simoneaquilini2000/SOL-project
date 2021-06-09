@@ -1,8 +1,8 @@
-Config parameters:
-	printEnable: 1
-	socketName: ./ServerConf/fileStorageSocket
-	saveReadFileDir: 
-	requestInterval: 200
+Parametri di configurazione del client:
+	Stampe abilitate: 1
+	Path socket: ./ServerConf/fileStorageSocket
+	Cartella in cui salvare i file letti: 
+	Attesa(in ms) tra spedizione di due richieste: 200
 Sono connesso al server
 
 Inizio richiesta OPEN FILE
@@ -21,11 +21,19 @@ Stampo informazioni post esecuzione della richiesta:
 	Esito: 0
 Fine richiesta WRITE FILE
 
+Inizio richiesta WRITE FILE
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 5(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/Test_files/QuadratoRosso.png
+	Esito: -1
+	Codice di errore: 2
+Fine richiesta WRITE FILE
+
 Inizio richiesta OPEN FILE
 Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 0(0)
-	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/clientConfig.c
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/ConfigAndUtilities/clientConfig.c
 	Esito: -1
 	Codice di errore: 2
 Fine richiesta OPEN FILE

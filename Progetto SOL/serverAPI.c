@@ -50,7 +50,7 @@ int openConnection(const char* sockName, int msec, const struct timespec abstime
    				max_nsec -= (msec * pow(10, 6));
    			}else{
 				imConnected = 0;
-   				perror("Errore fatale\n");
+   				perror("Errore in connessione al server fatale\n");
    				exit(EXIT_FAILURE);
    			}
    		}
@@ -93,9 +93,9 @@ int closeConnection(const char* sockName){
 
 int openFile(const char* pathname, int flags){
 	if(pathname == NULL || (flags != O_CREAT && flags != 0)){
-		perror("Invalid flags: it can be just O_CREAT \
-			(if the file doesn't exist in the cache it will \
-			 be created) or 0(no flags).In addition, pathname must be != NULL\n");
+		perror("Flag non validi: sono ammessi solo O_CREAT \
+		(in tal caso se il file non esiste verrà creato) e 0 \
+		(nessun flag). Inoltre pathname deve essere != NULL\n");
 		errno = EINVAL;
 		return -1;
 	}
@@ -202,7 +202,7 @@ int readFile(const char* pathname, void** buf, size_t* size){
 	*size = buf_size;
 	*buf = malloc(sizeof(char) * (buf_size + 1)); //alloco buffer per accogliere il contenuto del file
 	if(*buf == NULL){//errore fatale della malloc
-		perror("Malloc error!\n");
+		perror("Errore malloc!\n");
 		exit(EXIT_FAILURE);
 	}
 	memset(*buf, 0, (buf_size + 1));
@@ -276,7 +276,7 @@ int readNFiles(int N, const char* dirname){
 	}
 	errno = 0;
 	if(c.printEnable == 1)
-		printf("In totale ho letto %d bytes\n", readBytes);
+		printf("In totale ho letto dal file storage %d bytes\n", readBytes);
 	return counter;
 }
 

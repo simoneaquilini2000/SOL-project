@@ -1,14 +1,12 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<string.h>
-//#include<limits.h>
 #include<time.h>
 #include<fcntl.h>
 #include<unistd.h>
 #include<errno.h>
 #include "utility.h"
 #include "generic_queue.h"
-//#include "request.h"
 #include "file.h"
 
 int fileComparison(void* f1, void *f2){
@@ -32,21 +30,21 @@ void filePrint(void* info){
 	//ottengo in buff una stringa nel formato Y-m-d H:M:S del timestamp
 	strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&f.timestamp));
 
-	printf("FilePath: %s\n", f.filePath);
-	printf("Dimension: %d\n", f.dim);
+	printf("Path del file: %s\n", f.filePath);
+	printf("Dimensione(in B): %d\n", f.dim);
 	//verifico se f.content è stato allocato o meno(non sto verificando se sia vuoto o meno)
 	if(f.content == NULL)
-		printf("Content(NULL)\n");
+		printf("Contenuto(NULL)\n");
 	else
-		printf("Content: %s\n", f.content);
+		printf("Contenuto: %s\n", f.content);
 	printf("Timestamp: %s\n", buff);
-	printf("Locked: %d\n", f.isLocked);
-	printf("Open: %d\n", f.isOpen);
-	printf("Modified: %d\n", f.modified);
-	printf("Last successful operation:\n");
-	printf("\tOperation type: %d\n", f.lastSucceedOp.opType);
-	printf("\tOptional flags: %d\n", f.lastSucceedOp.optFlags);
-	printf("\tServer to Client descriptor: %d\n\n", f.lastSucceedOp.clientDescriptor);
+	printf("Lockato: %d\n", f.isLocked);
+	printf("Aperto: %d\n", f.isOpen);
+	printf("Modificato: %d\n", f.modified);
+	printf("Ultima operazione eseguita con successo sul file:\n");
+	printf("\tTipo di operazione: %d\n", f.lastSucceedOp.opType);
+	printf("\tFlags dell'operazione: %d\n", f.lastSucceedOp.optFlags);
+	printf("\tDescrittore lato server (che indica il client):%d\n\n", f.lastSucceedOp.clientDescriptor);
 }
 
 void freeFile(void* s){
@@ -153,7 +151,7 @@ int readFileContent(const char *pathname, char **fileContent){
     // controllo se il file esiste o meno
     if (fp == NULL)
     {
-        printf("(%d) - File Not Found!\n", getpid());
+        printf("File non trovato!\n");
         return -1;
     }
 
@@ -169,7 +167,7 @@ int readFileContent(const char *pathname, char **fileContent){
 	int file_fd = open(absPath, (O_RDWR | O_APPEND));
 
 	if(file_fd == -1){
-		perror("Errore open in sola lettura!\n");
+		perror("Errore open per lettura del contenuto del file!\n");
 		return -1;
 	}
 

@@ -20,7 +20,7 @@ GenericQueue toSendRequestQueue; //coda delle richieste da spedire al client
 	Stampo tutte le opzioni disponibili
 */
 void printAvailableOptions(){
-	printf("Available options:\n");
+	printf("Opzioni disponibili:\n");
 	printf("\t-f socketName\n");
 	printf("\t-w dirName[,n]\n");
 	printf("\t-W file1[,file2]\n");
@@ -55,7 +55,7 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, char* const* argv){
 			case 't': 
 				//per l'opzione t prendo solo l'ultima occorrenza
 				if((conf.requestInterval = (int) isNumber(optarg)) < 0){
-					perror("Wrong argument format for option -t");
+					perror("Argomento non valido per l'opzione -t, deve essere un numero\n");
 					exit(EXIT_FAILURE);
 				}
 				foundT = 1;
@@ -63,7 +63,7 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, char* const* argv){
 			case 'f': 
 				// non posso ripetere l'opzione f, se ciò accade la richiesta è malformata
 				if(foundF){
-					perror("Can not repeat option -f");
+					perror("L'opzione -f non può essere ripetuta\n");
 					exit(EXIT_FAILURE);
 				}
 				foundF = 1;
@@ -73,7 +73,7 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, char* const* argv){
 			case 'p':
 				//non posso ripetere l'opzione -p, quindi vale quanto detto per -f 
 				if(conf.printEnable){
-					perror("Can not repeat option -p");
+					perror("L'opzione -p non può essere ripetuta\n");
 					exit(EXIT_FAILURE);
 				}
 				conf.printEnable = 1;
@@ -92,7 +92,7 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, char* const* argv){
 				break;
 			case '?': 
 				//opzione invalida, richiesta malformata
-				perror("Invalid option(s)");
+				perror("Opzione/i non valida/e\n");
 				exit(EXIT_FAILURE);
 				break;
 			default: break; //ignoro opzioni non di configurazione
@@ -105,23 +105,24 @@ ClientConfigInfo getConfigInfoFromCmd(int argc, char* const* argv){
 		clearBuffer(conf.saveReadFileDir, 1024); //file letti non verrano salvati
 	else{
 		if(foundR == 0 && foundr == 0){ //c'è l'opzione -d ma non c'è né -r né -R -> ERRORE
-			perror("Option -d must be used with option -r or -R\n");
+			perror("Se l'opzione -d è specificata devono esserci almeno una \
+			tra l'opzione -r e -R\n");
 			exit(EXIT_FAILURE);
 		}
 	}
 	if(foundF == 0){ //necessario il nome del socket
-		perror("Required socket name\n");
+		perror("Path del socket necessario\n");
 		exit(EXIT_FAILURE);
 	}
 	return conf;
 }
 
 void printConfigInfo(ClientConfigInfo c){
-	printf("Config parameters:\n");
-	printf("\tprintEnable: %d\n", c.printEnable);
-	printf("\tsocketName: %s\n", c.socketName);
-	printf("\tsaveReadFileDir: %s\n", c.saveReadFileDir);
-	printf("\trequestInterval: %ld\n", c.requestInterval);
+	printf("Parametri di configurazione del client:\n");
+	printf("\tStampe abilitate: %d\n", c.printEnable);
+	printf("\tPath socket: %s\n", c.socketName);
+	printf("\tCartella in cui salvare i file letti: %s\n", c.saveReadFileDir);
+	printf("\tAttesa(in ms) tra spedizione di due richieste: %ld\n", c.requestInterval);
 }
 
 int buildInsertRequest(int type, char *arg, int request_flags){
@@ -139,7 +140,7 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 	while(token != NULL){
 		MyRequest *r = malloc(sizeof(MyRequest)); //creo richiesta
 		if(r == NULL){ //errore malloc, memoria inconsistente quindi errore fatale 
-			perror("Malloc error!\n");
+			perror("Errore malloc!\n");
 			exit(EXIT_FAILURE);
 		}
 		memset(r, 0, sizeof(MyRequest));
@@ -164,7 +165,7 @@ int buildInsertRequest(int type, char *arg, int request_flags){
 		if(ris == 0){ //inserisco richieste solo se non ci sono stati errori in traduzione
 			strncpy(r->request_content, buf, strlen(buf));
 			if(push(&toSendRequestQueue, (void*)r) == -1){ //errore fatale nella push
-				perror("push error!");
+				perror("Errore push!");
 				exit(EXIT_FAILURE);
 			}
 			counter++;
@@ -202,7 +203,7 @@ int buildReadNRequest(int type, char *arg, int request_flags){
 	toAdd->flags = request_flags; //aggiungo eventuali flags
 
 	if(push(&toSendRequestQueue, toAdd) == -1){ //errore fatale nella push
-		perror("errore push!");
+		perror("Errore push!");
 		exit(EXIT_FAILURE);
 	}
 	return 0;
@@ -299,8 +300,7 @@ int buildMultipleWriteRequest(int type, char* arg, int request_flags){
 	}
 	getcwd(currDir, PATH_MAX);
 	int writtenRequests = navigateFileSystem(buf, n, flag, type, request_flags); //navigo FS ed inserisco le richieste
-	chdir(currDir);
-	//printf("Ora la cwd è: %s\n", currDir); //devo ristabilire cwd
+	chdir(currDir); //ristabilisco cwd
 	if(flag){
 		if(writtenRequests == n)
 			return 0;
@@ -333,7 +333,7 @@ void getToSendRequestsFromCmd(int argc, char* const* argv){
 					  break;
 			case 'C': buildInsertRequest(CLOSE_FILE, optarg, 0);
 					  break;
-			case '?': printf("Invalid option(s)\n");
+			case '?': printf("Opzione/i non valida/e\n");
 					  exit(EXIT_FAILURE);
 					  break;
 			default: break;

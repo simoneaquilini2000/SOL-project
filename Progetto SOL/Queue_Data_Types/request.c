@@ -27,12 +27,12 @@ void requestPrint(void* c){
 	//ottengo in buff una stringa nel formato Y-m-d H:M:S del timestamp
 	strftime(buff, 20, "%Y-%m-%d %H:%M:%S", localtime(&d.timestamp));
 
-	printf("Communication descriptor: %d\n", d.comm_socket);
-	printf("Request Dimension: %d\n", d.request_dim);
-	printf("Request content: %s\n", d.request_content);
-	printf("Request send timestamp: %s\n", buff);
-	printf("Request flags: %d\n", d.flags);
-	printf("Type = %d\n\n", d.type);
+	printf("Descrittore sul quale avviene la comunicazione: %d\n", d.comm_socket);
+	printf("Dimensione richiesta: %d\n", d.request_dim);
+	printf("Contenuto della richiesta: %s\n", d.request_content);
+	printf("Timestamp dell'invio della richiesta: %s\n", buff);
+	printf("Flags della richiesta: %d\n", d.flags);
+	printf("Tipo richiesta: %d\n\n", d.type);
 }
 
 void freeRequest(void* c){

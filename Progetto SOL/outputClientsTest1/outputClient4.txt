@@ -1,8 +1,8 @@
-Config parameters:
-	printEnable: 1
-	socketName: ./ServerConf/fileStorageSocket
-	saveReadFileDir: ./SaveReadFileDirectory/AllCacheFilesTest1
-	requestInterval: 200
+Parametri di configurazione del client:
+	Stampe abilitate: 1
+	Path socket: ./ServerConf/fileStorageSocket
+	Cartella in cui salvare i file letti: ./SaveReadFileDirectory/AllCacheFilesTest1
+	Attesa(in ms) tra spedizione di due richieste: 200
 Sono connesso al server
 
 Inizio richiesta OPEN FILE
@@ -50,53 +50,62 @@ Stampo informazioni post esecuzione della richiesta:
 	Codice di errore: 17
 Fine richiesta OPEN FILE
 
-Inizio richiesta WRITE FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
-	Tipo operazione(flags): 5(0)
-	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/00-informazionicorso.pdf
-	Esito: -1
-	Codice di errore: 1
-Fine richiesta WRITE FILE
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione e linking/classi di memorizzazione.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
 
-Inizio richiesta WRITE FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
-	Tipo operazione(flags): 5(0)
-	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Chiamate di sistema/System Call files.pdf
-	Esito: -1
-	Codice di errore: 1
-Fine richiesta WRITE FILE
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione e linking/compiling e linking.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
 
-Inizio richiesta WRITE FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
-	Tipo operazione(flags): 5(0)
-	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione condizionale/funzioni rientranti.pdf
-	Esito: -1
-	Codice di errore: 1
-Fine richiesta WRITE FILE
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione e linking/librerie statiche e dinamiche.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
 
-Inizio richiesta WRITE FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
-	Tipo operazione(flags): 5(0)
-	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione condizionale/preprocessore e compilazione condizionata.pdf
-	Esito: -1
-	Codice di errore: 1
-Fine richiesta WRITE FILE
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione e linking/makefile.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
 
-Inizio richiesta WRITE FILE
+Inizio richiesta OPEN FILE
+Pathname è già un path assoluto
 Stampo informazioni post esecuzione della richiesta:
-	Tipo operazione(flags): 5(0)
-	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Compilazione condizionale/puntatori a funzione.pdf
+	Tipo operazione(flags): 0(64)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Pipe e FIFO/Pipe e FIFO.pdf
+	Esito: 0
+Fine richiesta OPEN FILE
+
+Inizio richiesta CLOSE FILE
+Pathname è già un path assoluto
+Stampo informazioni post esecuzione della richiesta:
+	Tipo operazione(flags): 2(0)
+	File di riferimento: /mnt/c/Users/Utente/Desktop/SIMONE/Università/Secondo Anno/Sistemi Operativi e Laboratorio/Laboratorio/Progetto SOL/pippo.txt
 	Esito: -1
-	Codice di errore: 1
-Fine richiesta WRITE FILE
+	Codice di errore: 2
+Fine richiesta CLOSE FILE
 
 Inizio richiesta READ_N_FILE
-In totale ho letto 1053197 bytes
+In totale ho letto dal file storage 401463 bytes
 Stampo informazioni post esecuzione della richiesta:
 	Tipo operazione(flags): 6(0)
-	File di riferimento: 0
-	Esito: 26
-	Numero di file letti: 26
+	File di riferimento: 1
+	Esito: 1
+	Numero di file letti: 1
 
 Fine richiesta READ_N_FILE
 Esito terminazione connesione: 0

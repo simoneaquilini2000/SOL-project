@@ -18,7 +18,7 @@ serverInfo startConfig(const char* sockPath){
 
 	f = fopen(sockPath, "r"); //leggo dal file di configurazione
 	if(f == NULL){ //errore fatale nel caso di non aperutra del file
-		perror("Error during config file opening!");
+		perror("Errore durante l'apertura del file di configurazione del server!");
 		exit(EXIT_FAILURE);
 	}
 
@@ -40,14 +40,15 @@ serverInfo startConfig(const char* sockPath){
 		strncpy(s.logFilePath, params[4], strlen(params[4]));
 		myStrNCpy(s.logFilePath, s.logFilePath, strlen(s.logFilePath));
 	}else{ //non ho letto N_INFO righe quindi mancano informazioni di configurazione
-		sprintf(errMess, "Wrong config file format: it must have at least %d lines to read\n", N_INFO);
+		sprintf(errMess, "Errore nel formato del file di configurazione: \
+		 deve avere almeno %d linee da leggere\n", N_INFO);
 		perror(errMess);
         exit(EXIT_FAILURE);
 	}
 
 	//se ho inserito dati di tipo sbagliato ho errore fatale
 	if(s.maxStorageSpace <= 0 || s.nMaxFile <= 0 || s.nWorkers <= 0){
-		perror("maxStorageSpace, nMaxFile and nWorkers must be > 0");
+		perror("maxStorageSpace, nMaxFile ed nWorkers devono essere > 0");
 		exit(EXIT_FAILURE);
 	}
 
