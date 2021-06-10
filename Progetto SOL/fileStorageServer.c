@@ -16,7 +16,6 @@
 #include "descriptor.h"
 #include "serverInfo.h"
 
-
 //flag che indica se è arrivato sigHup
 static int sigHupFlag = 0;
 
