@@ -537,8 +537,11 @@ int replacingAlgorithm(){
 	ed azione conseguente in base ai flag della richiesta
 */
 int executeOpenFile(MyRequest r){
+	MyFile f1;
+	memset(&f1, 0, sizeof(f1));
+	strcpy(f1.filePath, r.request_content);
 	pthread_mutex_lock(&fileCacheMutex);
-	int risFind = findElement(fileCache, r.request_content); //file presente in cache?
+	int risFind = findElement(fileCache, (void*) &f1); //file presente in cache?
 	pthread_mutex_unlock(&fileCacheMutex);
 
 	int result;
