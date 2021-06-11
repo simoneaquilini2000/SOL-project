@@ -58,10 +58,6 @@ int sendRequests(){
 				printf("Fine richiesta READ FILE\n");
 				if(ris < 0)
 					break;
-
-				//creo buffer con "puppa!"
-				//concatenavo buffer al contenunto letto
-				//scrivevo un file in append con questo contenuto 
 				MyFile toSave;
 				memset(&toSave, 0, sizeof(toSave));
 				strcpy(toSave.filePath, actReq->request_content);
@@ -148,7 +144,11 @@ int main(int argc, char *const *argv){
 
 	int a = openConnection(c.socketName, c.requestInterval, ts); //apro la connessione
 
-
+	if(a == -1){
+		perror("Non sono riuscito a connettermi con il server\n");
+		freeQueue(&toSendRequestQueue);
+		exit(EXIT_FAILURE);
+	}
 
 	int result = sendRequests();
 

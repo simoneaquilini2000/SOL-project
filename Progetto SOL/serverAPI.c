@@ -61,8 +61,8 @@ int openConnection(const char* sockName, int msec, const struct timespec abstime
    		printf("Sono connesso al server\n");
    		return 0;
    	}
-   	printf("Tempo scaduto\n"); //tempo scaduto per la connessione tutte le r/w falliranno
-   	errno = ETIMEDOUT;
+   	printf("Tempo scaduto\n"); //errore fatale, non è necessario spedire comunque le richieste
+   	errno = ETIMEDOUT; //perhè sicuramente falliranno
 	imConnected = 0;
    	return -1;
 }

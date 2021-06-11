@@ -860,6 +860,7 @@ int executeAppendFile(MyRequest r){
 		res = -4; //algoritmo di rimpiazzamento fallirebbe quindi non permetto l'esecuzione dell'operazione
 		if((l = writen(r.comm_socket, &res, sizeof(int))) == -1)
 			return -1;
+		free(buf);
 		return 0;
 	}
 
@@ -1034,6 +1035,7 @@ int executeWriteFile(MyRequest r){
 		result = -5;
 		if((l = writen(r.comm_socket, &result, sizeof(int))) == -1)
 			return -1;
+		free(buf);
 		return 0;
 	}
 
